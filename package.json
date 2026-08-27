@@ -51,6 +51,7 @@
     "ranker:probe-diagnostic": "tsx scripts/build-probe-ranker-diagnostic.ts",
     "ranker:replace-case-rows": "tsx scripts/replace-evidence-training-case-rows.ts",
     "ranker:evaluate-probe": "tsx scripts/evaluate-probe-ranker-diagnostic.ts",
+    "ranker:evaluate-shallow": "python3 scripts/evaluate-shallow-ranker-diagnostic.py",
     "ranker:rankability-input": "tsx scripts/build-rankability-input.ts",
     "semantic:evaluate-model": "tsx scripts/evaluate-semantic-model.ts",
     "semantic:inspect-query": "tsx scripts/inspect-semantic-query.ts",

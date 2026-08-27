@@ -199,7 +199,37 @@ describe("model-based semantic candidates", () => {
 
     expect(hits.map((hit) => hit.path)).toEqual(["src/renewal.ts", "src/audit.ts"]);
     expect(hits[0]?.similarity).toBeGreaterThan(0.99);
+    expect(hits[0]?.fileSimilarity).toBeGreaterThan(0.2);
+    expect(hits[0]?.symbolSimilarity).toBeGreaterThan(0.99);
+    expect(hits[1]?.fileSimilarity).toBe(0);
+    expect(hits[1]?.symbolSimilarity).toBeUndefined();
     expect(quantizedCosineSimilarity(new Float32Array([1, 0]), embeddings[1]!)).toBeGreaterThan(0.99);
+  });
+
+  it("preserves whole-file and symbol-body similarities through multi-view fusion", () => {
+    const hits = fuseSemanticCandidateRankings([
+      [{
+        path: "src/runtime.ts",
+        similarity: 0.9,
+        fileSimilarity: 0.7,
+        symbolSimilarity: 0.9,
+        documentIds: ["symbol"]
+      }],
+      [{
+        path: "src/runtime.ts",
+        similarity: 0.85,
+        fileSimilarity: 0.85,
+        symbolSimilarity: 0.6,
+        documentIds: ["file"]
+      }]
+    ], 4);
+
+    expect(hits[0]).toMatchObject({
+      path: "src/runtime.ts",
+      similarity: 0.9,
+      fileSimilarity: 0.85,
+      symbolSimilarity: 0.9
+    });
   });
 
   it("admits a semantic-only production file outside the lexical union without admitting tier-zero noise", () => {
