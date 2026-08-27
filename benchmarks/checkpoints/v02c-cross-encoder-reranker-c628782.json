@@ -1,0 +1,177 @@
+{
+  "schemaVersion": "learned-reranker-checkpoint.v2",
+  "checkpointId": "v02c-cross-encoder-reranker-c628782-20260827",
+  "createdAt": "2026-08-27T19:30:00-04:00",
+  "status": "completed_negative",
+  "classification": "completed_negative",
+  "branch": "codex/v0.2c-learned-reranker",
+  "implementationCommit": "c6287829dcb4605a2a315aa2c5ee42cee5b416a4",
+  "holdoutState": "sealed_detached",
+  "inputs": {
+    "reviewDecisions": {
+      "path": "benchmarks/reviews/v02c-hard-negative-review-v184.json",
+      "sha256": "8050647399f495df84046b172f094858186a7240afbb66cdfd0b4fafb00a4997",
+      "reviewQueueSha256": "65857379204834a1e013f6c45dd18593565cba7d02e18040ef04da919665016e"
+    },
+    "reviewedTrainingRows": {
+      "path": "artifacts/ranker-probe.semantic-v184-hard-negatives-train-cal135.jsonl",
+      "sha256": "0d57ad39ce40239e16c7885c677f998c3447a09f4346b0114f9fb6c24e5b09b0"
+    },
+    "candidateManifest": {
+      "path": "artifacts/ranker-corpus.semantic-v178-doc-interactions-train-cal135.json",
+      "sha256": "8d3a1a6b80eeccf880bfc215628b7b7e3d21889c1feb47573e14673cc42047a7"
+    },
+    "candidateReport": {
+      "path": "artifacts/ranker-corpus.semantic-v178-doc-interactions-train-cal135.report.json",
+      "sha256": "b311ff0b74a6cf7186a24dd8f4a9197abb1f3f14a9c7a75070684a116c9c00f2"
+    },
+    "v185Evaluation": {
+      "path": "artifacts/ranker-semantic-document-features-pairwise.v185-reviewed-negatives.json",
+      "sha256": "ee84440d1bd18ccd0dbca732d8b0b6b49000fb4448c64857c7fd7befa3081011",
+      "bytes": 27608
+    },
+    "crossEncoderScores": {
+      "path": "artifacts/cross-encoder-scores.v192.json",
+      "sha256": "fa97d4535dbe07460005bb5c178c347b32bcbff139d0512139aa83194aa3c45f",
+      "bytes": 4231826
+    },
+    "crossEncoderFeatureEvaluation": {
+      "path": "artifacts/ranker-cross-encoder-feature-pairwise.v193.json",
+      "sha256": "00263cd28c97eb3ed54445295d60b9599e239b4a4758e7547104ad26200cdc22",
+      "bytes": 30651
+    },
+    "pairedComparison": {
+      "path": "artifacts/ranker-cross-encoder-feature-comparison.v194.json",
+      "sha256": "a3912bf89e1c9b70c3cf2348db05bf737979e3b6be096ae8d890061f0024f4ff",
+      "bytes": 7380
+    }
+  },
+  "samePoolContract": {
+    "caseCount": 135,
+    "candidateLimit": 128,
+    "candidatePathsIdentical": true,
+    "baseFeatureVectorsIdentical": true,
+    "calibrationCaseCount": 45,
+    "calibrationRequiredFileCount": 72,
+    "requiredSourceCaseCount": 10,
+    "requiredSourceFileCount": 17,
+    "additionalReviewedRowsExcludedFromEffectivenessRanks": true
+  },
+  "hardNegativeReview": {
+    "reviewed": 30,
+    "irrelevant": 7,
+    "relevant": 20,
+    "uncertain": 3,
+    "policy": "Only source-reviewed irrelevant files became negative labels; relevant and uncertain candidates remained unlabeled.",
+    "v183RequiredSourceRecallAt64": 0.7647058823529411,
+    "v185RequiredSourceRecallAt64": 0.8235294117647058,
+    "v183StrictFullRecallAt64": 0.6,
+    "v185StrictFullRecallAt64": 0.7,
+    "v183RequiredSourceMrr": 0.18341613713545357,
+    "v185RequiredSourceMrr": 0.17275456652973945
+  },
+  "mechanism": {
+    "modelId": "jina-reranker-v1-tiny-en-q8",
+    "upstreamRevision": "1e1d77a66362c3ed4fce2fb290028a39553c8d13",
+    "modelManifestSha256": "4d36a73df0b0338aba11c6736175ff54e7190f77ccf07bf915d06d8e079f6823",
+    "modelBytes": 33424854,
+    "documentSelection": "maximum Jina embedding similarity over existing semantic-documents-v5 file and symbol documents",
+    "addedFeatures": [
+      "crossEncoderProbability",
+      "missingCrossEncoder"
+    ],
+    "trainingObjective": "case-normalized pairwise logistic",
+    "calibration": "positive-slope Newton Platt fit with backtracking",
+    "runtimePromotionImplemented": false,
+    "promotionEligible": false,
+    "benchmarkSpecificRelevanceRulesAdded": false
+  },
+  "results": {
+    "weakPatchCalibration": {
+      "cases": 45,
+      "requiredFiles": 72,
+      "v185": {
+        "recallAt5": 0.75,
+        "mrr": 0.47930610848500177,
+        "recallAt64": 0.9722222222222222,
+        "ece": 0.031721474342649304
+      },
+      "candidate": {
+        "recallAt5": 0.7638888888888888,
+        "mrr": 0.47899277235611293,
+        "recallAt64": 0.9722222222222222,
+        "ece": 0.21052502340989465,
+        "generatedVendorTopOneViolations": 0
+      },
+      "paired95": {
+        "recallAt5Delta": [0, 0.046875],
+        "mrrDelta": [-0.003009259259259267, 0.0017906728660008753],
+        "recallAt64Delta": [0, 0]
+      }
+    },
+    "requiredSourceDiagnostic": {
+      "cases": 10,
+      "requiredFiles": 17,
+      "v185": {
+        "recallAt5": 0.17647058823529413,
+        "mrr": 0.17275456652973945,
+        "recallAt64": 0.8235294117647058,
+        "strictFullRecallAt64": 0.7
+      },
+      "candidate": {
+        "recallAt5": 0.17647058823529413,
+        "mrr": 0.1733203043536293,
+        "recallAt64": 0.8235294117647058,
+        "strictFullRecallAt64": 0.7,
+        "recallAt128": 1,
+        "generatedVendorTopOneViolations": 0
+      },
+      "paired95": {
+        "recallAt5Delta": [0, 0],
+        "mrrDelta": [-0.00006180278730572031, 0.0012705146215057916],
+        "recallAt64Delta": [0, 0]
+      }
+    }
+  },
+  "runtime": {
+    "isolatedCases": 135,
+    "documentsScored": 6304,
+    "immutableSnapshotsVerified": 135,
+    "totalScoringMs": 466973.336,
+    "outboundRepositoryOrTaskData": false
+  },
+  "infrastructureRepair": {
+    "issue": "Full calibration scoring omitted labeled rows outside the frozen pool.",
+    "fix": "Score the frozen pool plus additional reviewed rows, retain explicit membership, and rank effectiveness on the frozen pool only.",
+    "oldArtifactRetainedAsNonCanonical": "artifacts/cross-encoder-scores.v190.json",
+    "canonicalArtifact": "artifacts/cross-encoder-scores.v192.json"
+  },
+  "validation": {
+    "fullTestSuitePassed": true,
+    "typecheckPassed": true,
+    "semanticArchitectureGuardPassed": true,
+    "licenseHeadersPassed": true,
+    "pythonCompilePassed": true,
+    "diffCheckPassed": true,
+    "holdoutOpened": false,
+    "paidProviderCalls": false
+  },
+  "gateDecision": {
+    "boundedPoolRecallAt128Passed": true,
+    "calibrationEcePassed": false,
+    "generatedVendorTopOnePassed": true,
+    "recallAt5Noninferior": true,
+    "mrrNoninferior": true,
+    "statisticallyPositivePrimaryImprovement": false,
+    "rankerServedRecallAt64Passed": false,
+    "promotionPassed": false,
+    "publicationEligible": false
+  },
+  "limitations": [
+    "The 10-case required-source cohort is small, unevenly stratified, and contains no Python cases.",
+    "The experiment uses train/calibration data only and is not sealed-holdout or live-agent evidence.",
+    "The cross-encoder produced only one-rank movements and did not improve required-source Recall@64.",
+    "The candidate's ECE exceeds the 0.05 gate, so its probabilities are not trustworthy for delivery policy."
+  ],
+  "nextExperiment": "Expand the reviewed required-source cohort across missing languages and scenarios, then rerun the frozen rankability audit. Do not choose another model family until the larger cohort distinguishes feature insufficiency from objective or capacity failure."
+}
