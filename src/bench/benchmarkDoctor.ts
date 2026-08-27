@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
+import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -36,6 +37,21 @@ export type BenchmarkDoctorOptions = {
   environment?: NodeJS.ProcessEnv;
   execute?: (command: string, args: string[], cwd: string) => string;
 };
+
+export function benchmarkInfrastructureEvidenceHash(report: BenchmarkInfrastructureReport): string {
+  const stableEvidence = {
+    schemaVersion: report.schemaVersion,
+    profile: report.profile,
+    campaignId: report.campaignId,
+    campaignFingerprint: report.campaignFingerprint,
+    platform: report.platform,
+    nonEvidence: report.nonEvidence,
+    valid: report.valid,
+    checks: report.checks,
+    caseIds: report.caseIds
+  };
+  return crypto.createHash("sha256").update(JSON.stringify(stableEvidence)).digest("hex");
+}
 
 export function runBenchmarkDoctor(options: BenchmarkDoctorOptions): BenchmarkInfrastructureReport {
   const root = path.resolve(options.repositoryRoot ?? findRepositoryRoot(path.dirname(path.resolve(options.manifestPath))));

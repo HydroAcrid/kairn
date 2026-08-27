@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { initializeBenchmarkRun, registerRunArtifact, verifyRegisteredArtifacts } from "../src/bench/artifactLedger.js";
-import { runBenchmarkDoctor } from "../src/bench/benchmarkDoctor.js";
+import { benchmarkInfrastructureEvidenceHash, runBenchmarkDoctor } from "../src/bench/benchmarkDoctor.js";
 import { inspectBenchmarkCache, quarantineBenchmarkCacheFinding } from "../src/bench/cacheInspection.js";
 import {
   assertStageDoesNotOpenHoldout,
@@ -60,6 +60,20 @@ describe("benchmark infrastructure contracts", () => {
       .toBe("completed_negative");
     expect(classifyBenchmarkRun({ infrastructureValid: true, dataValid: true, qualityPassed: true, candidateDelta: 0, rankingDelta: 0, noninferiorityMargin: 0.02 }))
       .toBe("completed_noninferior");
+  });
+
+  it("keeps canonical infrastructure evidence stable across generated timestamps", () => {
+    const fixture = writeFixtureCampaign({ leakLineage: false });
+    const report = runBenchmarkDoctor({
+      manifestPath: fixture.manifest,
+      profile: "ranker",
+      repositoryRoot: fixture.root,
+      allowDirtyFixture: true,
+      skipModelFiles: true,
+      execute: fakeExecute
+    });
+    expect(benchmarkInfrastructureEvidenceHash({ ...report, generatedAt: "2026-08-27T00:00:00.000Z" }))
+      .toBe(benchmarkInfrastructureEvidenceHash({ ...report, generatedAt: "2026-08-28T00:00:00.000Z" }));
   });
 
   it("reports the current v170 regression only on the identical v166 cohort", () => {

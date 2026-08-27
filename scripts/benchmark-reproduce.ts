@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { initializeBenchmarkRun, registerRunArtifact, updateRunStatus, verifyRegisteredArtifacts } from "../src/bench/artifactLedger.js";
-import { runBenchmarkDoctor } from "../src/bench/benchmarkDoctor.js";
+import { benchmarkInfrastructureEvidenceHash, runBenchmarkDoctor, type BenchmarkInfrastructureReport } from "../src/bench/benchmarkDoctor.js";
 import { loadBenchmarkCampaign, type BenchmarkStage } from "../src/bench/campaign.js";
 import { buildRankabilityAudit, formatRankabilityAuditMarkdown } from "../src/bench/rankabilityAudit.js";
 import { compareRankerEvaluations } from "../src/bench/rankerComparison.js";
@@ -57,14 +57,14 @@ function reproduceRankability(runDirectory: string, manifest: typeof run.manifes
   const models = ["model-v166", "model-v170"].map((id) => campaign.artifacts.find((artifact) => artifact.id === id && artifact.kind === "model"));
   if (!input || models.some((model) => !model)) throw new Error("rankability campaign artifacts are incomplete");
   const infrastructurePath = path.join(runDirectory, "infrastructure-report.json");
-  const infrastructure = JSON.parse(fs.readFileSync(infrastructurePath, "utf8")) as { valid: boolean };
+  const infrastructure = JSON.parse(fs.readFileSync(infrastructurePath, "utf8")) as BenchmarkInfrastructureReport;
   const startedAt = new Date().toISOString();
   const audit = buildRankabilityAudit({
     inputPath: input.absolutePath,
     modelPaths: models.map((model) => model!.absolutePath),
     infrastructureValid: infrastructure.valid,
     campaignFingerprint: campaign.fingerprint,
-    infrastructureReportSha256: fileHash(infrastructurePath)
+    infrastructureEvidenceSha256: benchmarkInfrastructureEvidenceHash(infrastructure)
   });
   const jsonPath = path.join(runDirectory, "evaluation", "rankability-audit.v2.json");
   const markdownPath = path.join(runDirectory, "evaluation", "rankability-audit.v2.md");

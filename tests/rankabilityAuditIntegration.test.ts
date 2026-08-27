@@ -13,7 +13,7 @@ describe("frozen v0.2C-R audit input", () => {
       ],
       infrastructureValid: true,
       campaignFingerprint: "a".repeat(64),
-      infrastructureReportSha256: "b".repeat(64)
+      infrastructureEvidenceSha256: "b".repeat(64)
     });
     expect(audit.cohorts.requiredSource).toMatchObject({ cases: 10, requiredFiles: 17 });
     expect(audit.cohorts.weakPatchCalibration.cases).toBe(45);

@@ -140,7 +140,7 @@ type RankabilityCaseAudit = {
 export type RankabilityAudit = {
   schemaVersion: "rankability-audit.v2";
   promotionEligible: false;
-  infrastructure: { valid: boolean; campaignFingerprint: string; reportSha256: string };
+  infrastructure: { valid: boolean; campaignFingerprint: string; evidenceSha256: string };
   data: {
     valid: boolean;
     inputSha256: string;
@@ -204,7 +204,7 @@ export function buildRankabilityAudit(input: {
   modelPaths: string[];
   infrastructureValid: boolean;
   campaignFingerprint: string;
-  infrastructureReportSha256: string;
+  infrastructureEvidenceSha256: string;
 }): RankabilityAudit {
   const inputBytes = fs.readFileSync(input.inputPath);
   const source = parseInput(JSON.parse(inputBytes.toString("utf8")) as unknown);
@@ -231,7 +231,7 @@ export function buildRankabilityAudit(input: {
   return {
     schemaVersion: "rankability-audit.v2",
     promotionEligible: false,
-    infrastructure: { valid: input.infrastructureValid, campaignFingerprint: input.campaignFingerprint, reportSha256: input.infrastructureReportSha256 },
+    infrastructure: { valid: input.infrastructureValid, campaignFingerprint: input.campaignFingerprint, evidenceSha256: input.infrastructureEvidenceSha256 },
     data: {
       valid: dataValid,
       inputSha256: digest(inputBytes),

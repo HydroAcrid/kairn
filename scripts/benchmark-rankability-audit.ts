@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { initializeBenchmarkRun, registerRunArtifact, updateRunStatus, verifyRegisteredArtifacts } from "../src/bench/artifactLedger.js";
-import { runBenchmarkDoctor } from "../src/bench/benchmarkDoctor.js";
+import { benchmarkInfrastructureEvidenceHash, runBenchmarkDoctor } from "../src/bench/benchmarkDoctor.js";
 import { loadBenchmarkCampaign } from "../src/bench/campaign.js";
 import { buildRankabilityAudit, formatRankabilityAuditMarkdown } from "../src/bench/rankabilityAudit.js";
 
@@ -53,7 +53,7 @@ try {
     modelPaths: modelArtifacts.map((artifact) => artifact.absolutePath),
     infrastructureValid: infrastructure.valid,
     campaignFingerprint: campaign.fingerprint,
-    infrastructureReportSha256: sha256(infrastructurePath)
+    infrastructureEvidenceSha256: benchmarkInfrastructureEvidenceHash(infrastructure)
   });
   const jsonPath = path.join(run.runDirectory, "evaluation", "rankability-audit.v2.json");
   const markdownPath = path.join(run.runDirectory, "evaluation", "rankability-audit.v2.md");

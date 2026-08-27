@@ -81,7 +81,7 @@ function build(input: RankabilityInput) {
     modelPaths,
     infrastructureValid: true,
     campaignFingerprint: "a".repeat(64),
-    infrastructureReportSha256: "b".repeat(64)
+    infrastructureEvidenceSha256: "b".repeat(64)
   });
 }
 
