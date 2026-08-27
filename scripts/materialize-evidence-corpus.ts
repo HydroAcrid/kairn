@@ -1031,11 +1031,16 @@ function semanticLineageCacheKey(intakeCase: IntakeCase): string {
 
 function repositoryIndexSnapshotCacheKey(intakeCase: IntakeCase, kairnRoot: string): string {
   const modelId = process.env.KAIRN_SEMANTIC_MODEL?.trim() || DEFAULT_SEMANTIC_MODEL_ID;
+  const candidateGeneratorMode = process.env.KAIRN_CANDIDATE_MODE?.trim() || "legacy";
+  if (candidateGeneratorMode !== "legacy" && candidateGeneratorMode !== "shadow" && candidateGeneratorMode !== "semantic") {
+    throw new Error(`invalid candidate generator mode for repository snapshot: ${candidateGeneratorMode}`);
+  }
   return buildRepositoryIndexSnapshotCacheKey({
     repositoryLineageId: intakeCase.repositoryLineageId,
     repositoryRef: intakeCase.repositoryRef,
     modelManifestSha256: semanticDocumentEmbeddingManifestSha256(getSemanticModelManifest(modelId)),
     documentSchemaVersion: SEMANTIC_DOCUMENT_SCHEMA_VERSION,
+    candidateGeneratorMode,
     implementationSha256: repositoryIndexImplementationSha256(kairnRoot)
   });
 }
@@ -1282,14 +1287,16 @@ export function buildRepositoryIndexSnapshotCacheKey(input: {
   repositoryRef: string;
   modelManifestSha256: string;
   documentSchemaVersion: string;
+  candidateGeneratorMode: "legacy" | "shadow" | "semantic";
   implementationSha256: string;
 }): string {
   return sha256([
-    "repository-index-snapshot.v1",
+    "repository-index-snapshot.v2",
     input.repositoryLineageId,
     input.repositoryRef,
     input.modelManifestSha256,
     input.documentSchemaVersion,
+    input.candidateGeneratorMode,
     input.implementationSha256
   ].join("\0"));
 }

@@ -334,6 +334,7 @@ describe("public evidence ranker training", () => {
       repositoryRef: "1".repeat(40),
       modelManifestSha256: "a".repeat(64),
       documentSchemaVersion: "semantic-documents-v5",
+      candidateGeneratorMode: "semantic" as const,
       implementationSha256: "b".repeat(64)
     };
     const first = buildRepositoryIndexSnapshotCacheKey(base);
@@ -346,6 +347,10 @@ describe("public evidence ranker training", () => {
     expect(buildRepositoryIndexSnapshotCacheKey({
       ...base,
       implementationSha256: "c".repeat(64)
+    })).not.toBe(first);
+    expect(buildRepositoryIndexSnapshotCacheKey({
+      ...base,
+      candidateGeneratorMode: "legacy"
     })).not.toBe(first);
   });
 
