@@ -297,3 +297,57 @@ immutable atomic file per completed case. It remains backward-compatible with
 the former monolithic progress format and migrates it on the next successful
 write. This prevents each completed case from serializing and replacing the
 entire growing corpus journal.
+
+## Frozen Candidate-Coverage Follow-up
+
+The rankability audit selected candidate generation as the next mechanism to
+repair. A fresh reconstruction at audit-tip commit `56d82fd` established the
+current serving baseline on the same frozen 38-case / 72-required-file oracle:
+30/38 strict full recall at 64, 37/38 at 128, 59/72 required-file recall at 64,
+and 69/72 at 128. This later current-code baseline is distinct from the
+historical `0360c32` journal used by the rankability audit and must not be
+combined with it.
+
+The only incomplete case at 128 was a TypeScript source-localization task in a
+repository with dynamic database dispatch. Imported member calls such as
+`db.getObject(...)` were not preserved as parser facts, so graph construction
+could not distinguish the concrete modules implementing the invoked member
+from the other modules installed behind the dispatcher.
+
+Commit `fa03e923b83e5df6c87a4d017f0102962e733f28` adds a general structural
+mechanism: JavaScript and TypeScript parsing records imported module member
+calls, and graph construction adds bounded call edges only to imported
+concrete modules that define those members. It adds no filename, task-term,
+repository-specific, regular-expression relevance, or semantic-scoring rule.
+A broader graph-importer fusion experiment recovered the target but displaced
+two required Go files; that fusion change was reverted and is not part of the
+frozen candidate.
+
+The isolated mechanism produced this same-cohort result:
+
+| Candidate metric | `56d82fd` baseline | `fa03e92` candidate | Delta |
+| --- | ---: | ---: | ---: |
+| Strict full recall@64 | 30/38 (78.95%) | 30/38 (78.95%) | 0.00 pp |
+| Required-file recall@64 | 59/72 (81.94%) | 62/72 (86.11%) | +4.17 pp |
+| Strict full recall@128 | 37/38 (97.37%) | 38/38 (100%) | +2.63 pp |
+| Required-file recall@128 | 69/72 (95.83%) | 72/72 (100%) | +4.17 pp |
+
+No case moved backward. The paired case-bootstrap 95% intervals for the two
+required-file improvements are 0 to +12 percentage points; the strict-full
+128 interval is 0 to +7.89 points. Therefore this passes the zero-miss
+bounded-pool gate but is not statistically sufficient for a public “Kairn is
+better” claim. Eight cases and 11 required files remain outside served rank 64,
+while every one is present by rank 128.
+
+Focused parser/graph tests passed 91/91, TypeScript typecheck and the semantic
+architecture guard passed, Tier A completed validly in 15.386 seconds, and the
+offline five-language Tier B completed validly in 19.846 seconds. The full
+candidate comparison reused 186,173 embeddings and created none. Raw evidence
+artifacts are ignored but bound by SHA-256 in
+`benchmarks/checkpoints/v02c-candidate-coverage-fa03e92.json`.
+
+Candidate generation is now frozen. The next experiment is to rematerialize
+the 135 train/calibration cases under the new index schema, review changed rows,
+and evaluate the next learned reranker against v166 on identical 128-file
+pools. The detached holdout and paid Claude/ReasonBlocks work remain blocked
+until the served-ranker and calibration gates pass.

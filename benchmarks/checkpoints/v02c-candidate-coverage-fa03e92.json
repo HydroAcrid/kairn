@@ -1,0 +1,136 @@
+{
+  "schemaVersion": "candidate-coverage-checkpoint.v1",
+  "checkpointId": "v02c-candidate-coverage-fa03e92-20260827",
+  "createdAt": "2026-08-27T14:12:08-04:00",
+  "status": "candidate_pool_gate_passed_ranker_gate_pending",
+  "branch": "codex/v0.2c-candidate-coverage",
+  "baselineCommit": "56d82fd8686b1776182d98d9e2a9c048c16ac806",
+  "implementationCommit": "fa03e923b83e5df6c87a4d017f0102962e733f28",
+  "campaign": {
+    "caseManifestPath": "benchmarks/semantic/oracle38-cases-v1.json",
+    "caseManifestSha256": "2640a6f377aaadf142f9f60dfc0d4b17af6d0c6c7dafa6fa99727289ce069313",
+    "caseCount": 38,
+    "requiredFileCount": 72,
+    "semanticRequired": true,
+    "caseProcessIsolation": true,
+    "complete": true,
+    "baseline": {
+      "corpusPath": "artifacts/candidate-coverage-oracle38-current.json",
+      "corpusSha256": "2c9fd4a9ef5378766690e9bed3d55c823523c9d2836013c087276f70ff615c81",
+      "corpusBytes": 7835902,
+      "reportPath": "artifacts/candidate-coverage-oracle38-current.report.json",
+      "reportSha256": "b93b8ca6db7182a39fcadc38ccf2ade8796d52bfec3758b5e78959d8981d2cbf",
+      "reportBytes": 51167249
+    },
+    "candidate": {
+      "corpusPath": "artifacts/candidate-coverage-oracle38-member-call-only.json",
+      "corpusSha256": "2997c38d2e88d07bc712174cee801c7a986e60818847aafda1819bf6de272f11",
+      "corpusBytes": 7836209,
+      "reportPath": "artifacts/candidate-coverage-oracle38-member-call-only.report.json",
+      "reportSha256": "49585dbf611b0fc6725702c579d55f44e065a18658574781bcdd86ebeb76d21d",
+      "reportBytes": 51205101
+    }
+  },
+  "mechanism": {
+    "finding": "CommonJS and JavaScript/TypeScript imported member calls were not preserved as objective parser facts, so dynamic dispatcher modules could not distinguish the concrete implementations actually invoked by an importer.",
+    "change": "Parse imported module member calls and add bounded call edges only to concrete imported modules that define the invoked member.",
+    "maximumImplementationsPerMember": 16,
+    "indexFreshnessSchemaVersion": 11,
+    "semanticOrTaskSpecificRelevanceRulesAdded": false,
+    "discardedExperiment": "Adding the broad graph-importer lane to core reciprocal-rank fusion recovered the target case but displaced two required Go files at 128; that fusion change was reverted before the frozen comparison."
+  },
+  "results": {
+    "strictFullRecallAt64": {
+      "baselineCount": 30,
+      "candidateCount": 30,
+      "totalCases": 38,
+      "baselineRate": 0.7894736842105263,
+      "candidateRate": 0.7894736842105263,
+      "deltaPercentagePoints": 0,
+      "pairedCaseBootstrap95PercentagePoints": [0, 0]
+    },
+    "requiredFileRecallAt64": {
+      "baselineCount": 59,
+      "candidateCount": 62,
+      "totalFiles": 72,
+      "baselineRate": 0.8194444444444444,
+      "candidateRate": 0.8611111111111112,
+      "deltaPercentagePoints": 4.166666666666667,
+      "pairedCaseBootstrap95PercentagePoints": [0, 12]
+    },
+    "strictFullRecallAt128": {
+      "baselineCount": 37,
+      "candidateCount": 38,
+      "totalCases": 38,
+      "baselineRate": 0.9736842105263158,
+      "candidateRate": 1,
+      "deltaPercentagePoints": 2.631578947368421,
+      "pairedCaseBootstrap95PercentagePoints": [0, 7.89]
+    },
+    "requiredFileRecallAt128": {
+      "baselineCount": 69,
+      "candidateCount": 72,
+      "totalFiles": 72,
+      "baselineRate": 0.9583333333333334,
+      "candidateRate": 1,
+      "deltaPercentagePoints": 4.166666666666667,
+      "pairedCaseBootstrap95PercentagePoints": [0, 12]
+    },
+    "negativeCaseMovements": 0,
+    "requiredSourceMissesAt128": 0,
+    "generatedOrVendorTopOneViolations": 0,
+    "changedCase": {
+      "language": "typescript",
+      "scenario": "source_localization",
+      "requiredFilesRecoveredAt64": 3,
+      "requiredFilesRecoveredAt128": 3
+    }
+  },
+  "strata": {
+    "typescript": {
+      "cases": 10,
+      "strictFullAt64": [8, 8],
+      "requiredFilesAt64": [19, 22],
+      "requiredFileTotal": 25,
+      "strictFullAt128": [9, 10],
+      "requiredFilesAt128": [22, 25]
+    },
+    "allOtherLanguages": {
+      "cases": 28,
+      "strictFullAt64": [22, 22],
+      "requiredFilesAt64": [40, 40],
+      "requiredFileTotal": 47,
+      "strictFullAt128": [28, 28],
+      "requiredFilesAt128": [47, 47]
+    }
+  },
+  "validation": {
+    "focusedTests": { "files": 3, "tests": 91, "passed": true },
+    "typecheckPassed": true,
+    "semanticArchitectureGuardPassed": true,
+    "tierA": { "valid": true, "milliseconds": 15386 },
+    "tierB": {
+      "valid": true,
+      "offline": true,
+      "milliseconds": 19846,
+      "languages": ["python", "typescript", "go", "java", "cpp"],
+      "secondRunEmbeddingsReused": 12,
+      "secondRunEmbeddingsCreated": 0,
+      "changedRunEmbeddingsReused": 11,
+      "changedRunEmbeddingsCreated": 2
+    },
+    "candidateEmbeddingsReused": 186173,
+    "candidateEmbeddingsCreated": 0,
+    "candidateEmbeddingReuseRate": 1
+  },
+  "interpretation": {
+    "boundedPoolGatePassed": true,
+    "rankerServedRecallGateEvaluated": false,
+    "rankerPromotionPassed": false,
+    "holdoutOpened": false,
+    "paidProviderCalls": false,
+    "publicationEligible": false,
+    "disclosure": "The frozen 38-case development cohort now has zero required-source misses at bounded pool@128. Confidence-interval lower bounds are zero and the eight remaining served-64 failures must be addressed by a learned ranker on rematerialized train/calibration data. This is internal development evidence, not a public effectiveness claim."
+  },
+  "nextExperiment": "Freeze candidate generation at fa03e92, rematerialize the 135 train/calibration cases under index schema 11, review only changed candidate rows, and compare a learned reranker with v166 on identical 128-file pools. Do not open holdout or run paid providers until ranker gates pass."
+}

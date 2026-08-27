@@ -43,3 +43,10 @@ measurements before model-based semantic retrieval. Its pending reviews are
 explicitly superseded rather than completed against a changing union. Ranker
 training and paid live comparisons stay blocked until a frozen semantic
 generator passes the candidate gates.
+
+`candidate-coverage-checkpoint.v1` binds a frozen before/after comparison over
+the same candidate-oracle cases and records the exact mechanism, artifacts,
+strata, regressions, infrastructure checks, and promotion limitations. Passing
+the bounded-pool gate authorizes train/calibration rematerialization; it does
+not establish served-ranker quality, open the detached holdout, or support a
+public effectiveness claim.
