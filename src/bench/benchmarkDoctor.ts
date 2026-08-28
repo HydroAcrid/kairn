@@ -8,6 +8,7 @@ import path from "node:path";
 import { assertStageDoesNotOpenHoldout, loadBenchmarkCampaign, type ResolvedCampaign } from "./campaign.js";
 import { getSemanticModelManifest } from "../semantic/modelRegistry.js";
 import { verifySemanticModel } from "../semantic/modelManager.js";
+import { benchmarkCachePolicy, formatBenchmarkCacheBytes } from "./cacheRetention.js";
 
 export type BenchmarkDoctorProfile = "ranker" | "live";
 export type BenchmarkDoctorCheck = {
@@ -71,6 +72,7 @@ export function runBenchmarkDoctor(options: BenchmarkDoctorOptions): BenchmarkIn
   checkGit(checks, resolved, execute, root, Boolean(options.allowDirtyFixture));
   checkDependencies(checks, root);
   checkDisk(checks, root);
+  checkBenchmarkCache(checks, root, environment);
   checkCampaignData(checks, resolved);
   checkSemanticModel(checks, resolved, Boolean(options.skipModelFiles));
   if (options.profile === "live") checkLiveRuntime(checks, execute, root, environment);
@@ -153,6 +155,39 @@ function checkDisk(checks: BenchmarkDoctorCheck[], root: string): void {
   } catch (error) {
     fail(checks, "disk", `Could not inspect free space: ${errorMessage(error)}`);
   }
+}
+
+function checkBenchmarkCache(
+  checks: BenchmarkDoctorCheck[],
+  root: string,
+  environment: NodeJS.ProcessEnv
+): void {
+  try {
+    const policy = benchmarkCachePolicy(environment);
+    const cacheRoot = path.join(root, "artifacts", "ranker-checkouts");
+    const bytes = fs.existsSync(cacheRoot) ? directoryBytes(cacheRoot) : 0;
+    const detail = `${formatBenchmarkCacheBytes(bytes)} retained of ${formatBenchmarkCacheBytes(policy.maxBytes)}.`;
+    if (bytes > policy.maxBytes) {
+      fail(checks, "cache_retention", `${detail} Run pnpm benchmark:cache -- --prune before materialization.`);
+    } else if (bytes >= policy.warningBytes) {
+      warn(checks, "cache_retention", `${detail} LRU cleanup is approaching.`);
+    } else {
+      pass(checks, "cache_retention", detail);
+    }
+  } catch (error) {
+    fail(checks, "cache_retention", `Could not validate benchmark cache policy: ${errorMessage(error)}`);
+  }
+}
+
+function directoryBytes(target: string): number {
+  const stats = fs.lstatSync(target);
+  if (!stats.isDirectory()) return stats.size;
+  return fs.readdirSync(target, { withFileTypes: true }).reduce((sum, entry) => {
+    const child = path.join(target, entry.name);
+    return sum + (entry.isDirectory() && !entry.isSymbolicLink()
+      ? directoryBytes(child)
+      : fs.lstatSync(child).size);
+  }, stats.size);
 }
 
 function checkCampaignData(checks: BenchmarkDoctorCheck[], resolved: ResolvedCampaign): void {

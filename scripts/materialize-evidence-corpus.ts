@@ -19,6 +19,16 @@ import {
 } from "../src/semantic/modelRegistry.js";
 import { SqliteStore } from "../src/store/sqliteStore.js";
 import { resolveRoot } from "../src/utils/paths.js";
+import {
+  benchmarkCachePolicy,
+  benchmarkCachePreflight,
+  benchmarkCacheRootForPath,
+  enforceBenchmarkCacheRetention,
+  formatBenchmarkCacheBytes,
+  leaseBenchmarkCacheEntry,
+  registerBenchmarkCacheEntry,
+  type BenchmarkCachePolicy
+} from "../src/bench/cacheRetention.js";
 import type {
   EvidenceCandidate,
   SemanticEmbeddingRecord,
@@ -72,6 +82,7 @@ export type MaterializeOptions = {
   outPath: string;
   reportPath: string;
   cacheDir?: string;
+  cacheMaxBytes?: number;
   allowSample?: boolean;
   allowLocalFixture?: boolean;
   draft?: boolean;
@@ -104,6 +115,8 @@ export type IsolatedMaterializationProgress = {
 
 const MATERIALIZATION_PROGRESS_DISK_SCHEMA =
   "ranker-corpus-materialization-progress.v2" as const;
+const MATERIALIZATION_PROGRESS_RECEIPT_SCHEMA =
+  "ranker-corpus-materialization-receipt.v1" as const;
 const MATERIALIZATION_PROGRESS_CASE_SCHEMA =
   "ranker-corpus-materialization-progress-case.v1" as const;
 
@@ -147,6 +160,8 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
   }
   const cacheDir = path.resolve(options.cacheDir ?? path.join(kairnRoot, "artifacts", "ranker-checkouts"));
   fs.mkdirSync(cacheDir, { recursive: true });
+  const cachePolicy = materializationCachePolicy(options);
+  reportCachePreflight(cacheDir, cachePolicy, options.isolatedWorker === true);
 
   const materializedCases: Array<Record<string, unknown>> = [];
   const reportCases: Array<Record<string, unknown>> = [];
@@ -391,6 +406,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       checkout.cleanup();
       caseTiming.cleanup = roundMilliseconds(performance.now() - cleanupStarted);
       caseTiming.totalWorker = roundMilliseconds(performance.now() - caseStarted);
+      enforceBenchmarkCacheRetention(cacheDir, { policy: cachePolicy });
     }
   }
 
@@ -471,6 +487,8 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
   }
   const cacheDir = path.resolve(options.cacheDir ?? path.join(kairnRoot, "artifacts", "ranker-checkouts"));
   fs.mkdirSync(cacheDir, { recursive: true });
+  const cachePolicy = materializationCachePolicy(options);
+  reportCachePreflight(cacheDir, cachePolicy, false);
   const intakeHash = sha256(fs.readFileSync(intakePath));
   const selectedCaseIds = selectedCases.map((item) => item.id);
   const progressPath = `${outPath}.progress.json`;
@@ -520,6 +538,7 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
       "--out", childManifestPath,
       "--report-out", childReportPath,
       "--cache", cacheDir,
+      "--cache-max-bytes", String(cachePolicy.maxBytes),
       "--case-id", intakeCase.id,
       "--in-process",
       "--isolated-worker",
@@ -576,6 +595,7 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
     } finally {
       fs.rmSync(childManifestPath, { force: true });
       fs.rmSync(childReportPath, { force: true });
+      enforceBenchmarkCacheRetention(cacheDir, { policy: cachePolicy });
     }
   }
 
@@ -628,16 +648,19 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
   fs.writeFileSync(outPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
   if (options.resume) {
-    writeIsolatedMaterializationProgress(progressPath, {
-      schemaVersion: "ranker-corpus-materialization-progress.v1",
-      kairnCommit,
-      intakeSha256: intakeHash,
-      selectedCaseIds,
-      ...(options.probeLimit ? { probeLimit: options.probeLimit } : {}),
-      complete: true,
-      materializedCases,
-      reportCases
-    });
+    if (!restoredProgress?.complete) {
+      writeIsolatedMaterializationProgress(progressPath, {
+        schemaVersion: "ranker-corpus-materialization-progress.v1",
+        kairnCommit,
+        intakeSha256: intakeHash,
+        selectedCaseIds,
+        ...(options.probeLimit ? { probeLimit: options.probeLimit } : {}),
+        complete: true,
+        materializedCases,
+        reportCases
+      });
+    }
+    finalizeIsolatedMaterializationProgress(progressPath, outPath, reportPath);
   }
   return { manifestPath: outPath, reportPath, caseCount: materializedCases.length };
 }
@@ -964,21 +987,42 @@ function resolveCheckout(
       throw error;
     }
   }
-  const remote = git(["remote", "get-url", "origin"], repositoryCache).replace(/\.git$/i, "").replace(/\/$/, "");
-  const expected = intakeCase.repositoryUrl.replace(/\.git$/i, "").replace(/\/$/, "");
-  if (remote !== expected) throw new Error(`${intakeCase.id}: cached checkout remote mismatch`);
-  git(["fetch", "--quiet", "--depth=1", "origin", intakeCase.repositoryRef], repositoryCache);
-  const checkout = path.join(worktreesDir, `${repositoryKey}-${intakeCase.repositoryRef.slice(0, 12)}-${crypto.randomUUID()}`);
-  git(["worktree", "add", "--quiet", "--detach", checkout, intakeCase.repositoryRef], repositoryCache);
-  if (git(["rev-parse", "HEAD"], checkout) !== intakeCase.repositoryRef) throw new Error(`${intakeCase.id}: worktree commit mismatch`);
-  return {
-    root: checkout,
-    cleanup: () => {
-      const statePath = path.join(checkout, ".kairn");
-      if (fs.existsSync(statePath)) fs.rmSync(statePath, { recursive: true, force: true });
-      if (fs.existsSync(checkout)) git(["worktree", "remove", checkout], repositoryCache);
-    }
-  };
+  const repositoryEntryId = `repository:${repositoryKey}`;
+  registerBenchmarkCacheEntry(cacheDir, {
+    id: repositoryEntryId,
+    kind: "repository",
+    paths: [repositoryCache]
+  });
+  const repositoryLease = leaseBenchmarkCacheEntry(cacheDir, repositoryEntryId);
+  try {
+    const remote = git(["remote", "get-url", "origin"], repositoryCache).replace(/\.git$/i, "").replace(/\/$/, "");
+    const expected = intakeCase.repositoryUrl.replace(/\.git$/i, "").replace(/\/$/, "");
+    if (remote !== expected) throw new Error(`${intakeCase.id}: cached checkout remote mismatch`);
+    git(["fetch", "--quiet", "--depth=1", "origin", intakeCase.repositoryRef], repositoryCache);
+    registerBenchmarkCacheEntry(cacheDir, {
+      id: repositoryEntryId,
+      kind: "repository",
+      paths: [repositoryCache]
+    });
+    const checkout = path.join(worktreesDir, `${repositoryKey}-${intakeCase.repositoryRef.slice(0, 12)}-${crypto.randomUUID()}`);
+    git(["worktree", "add", "--quiet", "--detach", checkout, intakeCase.repositoryRef], repositoryCache);
+    if (git(["rev-parse", "HEAD"], checkout) !== intakeCase.repositoryRef) throw new Error(`${intakeCase.id}: worktree commit mismatch`);
+    return {
+      root: checkout,
+      cleanup: () => {
+        try {
+          const statePath = path.join(checkout, ".kairn");
+          if (fs.existsSync(statePath)) fs.rmSync(statePath, { recursive: true, force: true });
+          if (fs.existsSync(checkout)) git(["worktree", "remove", checkout], repositoryCache);
+        } finally {
+          repositoryLease.release();
+        }
+      }
+    };
+  } catch (error) {
+    repositoryLease.release();
+    throw error;
+  }
 }
 
 type SnapshotEmbeddingCache = {
@@ -996,11 +1040,15 @@ type SnapshotEmbeddingCache = {
 };
 
 type RepositoryIndexSnapshotManifest = {
-  formatVersion: 1;
+  formatVersion: 2;
   cacheKey: string;
   sourceRootPath: string;
   databaseSha256: string;
+  databaseBytes: number;
+  databaseBlobPath: string;
 };
+
+const CANONICAL_REPOSITORY_SNAPSHOT_ROOT = "/__kairn_benchmark_snapshot_root__";
 
 function semanticSnapshotCacheKey(intakeCase: IntakeCase): string {
   const modelId = process.env.KAIRN_SEMANTIC_MODEL?.trim() || DEFAULT_SEMANTIC_MODEL_ID;
@@ -1054,6 +1102,39 @@ export function readIsolatedMaterializationProgress(
     JSON.parse(fs.readFileSync(progressPath, "utf8")),
     "isolated materialization progress"
   );
+  if (parsed.schemaVersion === MATERIALIZATION_PROGRESS_RECEIPT_SCHEMA) {
+    const receiptDirectory = path.dirname(path.resolve(progressPath));
+    const manifestPath = path.resolve(
+      receiptDirectory,
+      string(parsed.manifestPath, "materialization receipt manifestPath")
+    );
+    const reportPath = path.resolve(
+      receiptDirectory,
+      string(parsed.reportPath, "materialization receipt reportPath")
+    );
+    const expectedManifestPath = path.resolve(progressPath.slice(0, -".progress.json".length));
+    if (manifestPath !== expectedManifestPath) {
+      throw new Error("materialization receipt does not match its manifest path");
+    }
+    for (const [target, hashField] of [
+      [manifestPath, "manifestSha256"],
+      [reportPath, "reportSha256"]
+    ] as const) {
+      if (!fs.existsSync(target)) throw new Error(`materialization receipt artifact is missing: ${target}`);
+      if (sha256(fs.readFileSync(target)) !== string(parsed[hashField], `materialization receipt ${hashField}`)) {
+        throw new Error(`materialization receipt artifact checksum mismatch: ${target}`);
+      }
+    }
+    const manifest = record(JSON.parse(fs.readFileSync(manifestPath, "utf8")), "materialization receipt manifest");
+    const report = record(JSON.parse(fs.readFileSync(reportPath, "utf8")), "materialization receipt report");
+    return parseIsolatedMaterializationProgress({
+      ...parsed,
+      schemaVersion: "ranker-corpus-materialization-progress.v1",
+      complete: true,
+      materializedCases: array(manifest.cases, "materialization receipt manifest cases"),
+      reportCases: array(report.cases, "materialization receipt report cases")
+    }, expected);
+  }
   if (parsed.schemaVersion === MATERIALIZATION_PROGRESS_DISK_SCHEMA) {
     const completedCaseIds = array(parsed.completedCaseIds, "progress completedCaseIds")
       .map((item, index) => string(item, `progress completedCaseIds[${index}]`));
@@ -1220,6 +1301,70 @@ export function writeIsolatedMaterializationProgress(
   });
 }
 
+export function finalizeIsolatedMaterializationProgress(
+  progressPath: string,
+  manifestPath: string,
+  reportPath: string
+): void {
+  if (!fs.existsSync(progressPath)) throw new Error("cannot finalize missing materialization progress");
+  const current = record(
+    JSON.parse(fs.readFileSync(progressPath, "utf8")),
+    "isolated materialization progress"
+  );
+  if (
+    current.schemaVersion !== MATERIALIZATION_PROGRESS_DISK_SCHEMA &&
+    current.schemaVersion !== MATERIALIZATION_PROGRESS_RECEIPT_SCHEMA
+  ) {
+    throw new Error("only journaled materialization progress can be finalized");
+  }
+  if (current.schemaVersion === MATERIALIZATION_PROGRESS_DISK_SCHEMA && current.complete !== true) {
+    throw new Error("cannot finalize incomplete materialization progress");
+  }
+  const resolvedManifest = path.resolve(manifestPath);
+  const resolvedReport = path.resolve(reportPath);
+  const expectedManifest = path.resolve(progressPath.slice(0, -".progress.json".length));
+  if (resolvedManifest !== expectedManifest) throw new Error("materialization progress path does not match manifest path");
+  if (!fs.existsSync(resolvedManifest) || !fs.existsSync(resolvedReport)) {
+    throw new Error("cannot finalize materialization progress before output artifacts exist");
+  }
+  const identity = current.schemaVersion === MATERIALIZATION_PROGRESS_RECEIPT_SCHEMA
+    ? current
+    : {
+        kairnCommit: current.kairnCommit,
+        intakeSha256: current.intakeSha256,
+        selectedCaseIds: current.selectedCaseIds,
+        ...(current.probeLimit === undefined ? {} : { probeLimit: current.probeLimit })
+      };
+  writeAtomicJson(progressPath, {
+    schemaVersion: MATERIALIZATION_PROGRESS_RECEIPT_SCHEMA,
+    kairnCommit: string(identity.kairnCommit, "progress kairnCommit"),
+    intakeSha256: string(identity.intakeSha256, "progress intakeSha256"),
+    selectedCaseIds: array(identity.selectedCaseIds, "progress selectedCaseIds"),
+    ...(identity.probeLimit === undefined ? {} : { probeLimit: identity.probeLimit }),
+    complete: true,
+    manifestPath: path.relative(path.dirname(path.resolve(progressPath)), resolvedManifest),
+    manifestSha256: sha256(fs.readFileSync(resolvedManifest)),
+    reportPath: path.relative(path.dirname(path.resolve(progressPath)), resolvedReport),
+    reportSha256: sha256(fs.readFileSync(resolvedReport))
+  });
+  removeCompletedMaterializationCaseJournal(progressPath);
+}
+
+function removeCompletedMaterializationCaseJournal(progressPath: string): void {
+  const caseDirectory = materializationProgressCaseDirectory(progressPath);
+  if (!fs.existsSync(caseDirectory)) return;
+  const parent = path.resolve(path.dirname(progressPath));
+  const resolved = path.resolve(caseDirectory);
+  if (path.dirname(resolved) !== parent || resolved !== path.resolve(`${progressPath}.cases`)) {
+    throw new Error("materialization case journal path is outside its artifact directory");
+  }
+  const unexpected = fs.readdirSync(resolved).filter((name) => !/^\d{6}\.json$/.test(name));
+  if (unexpected.length > 0) {
+    throw new Error(`materialization case journal contains unknown files: ${unexpected.join(", ")}`);
+  }
+  fs.rmSync(resolved, { recursive: true, force: true });
+}
+
 function materializationProgressCaseDirectory(progressPath: string): string {
   return `${progressPath}.cases`;
 }
@@ -1243,6 +1388,31 @@ function writeAtomicJson(targetPath: string, value: unknown): void {
 
 function sameStrings(left: string[], right: string[]): boolean {
   return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function materializationCachePolicy(options: Pick<MaterializeOptions, "cacheMaxBytes">): BenchmarkCachePolicy {
+  return benchmarkCachePolicy({
+    ...process.env,
+    ...(options.cacheMaxBytes
+      ? { KAIRN_BENCHMARK_CACHE_MAX_BYTES: String(options.cacheMaxBytes) }
+      : {})
+  });
+}
+
+function reportCachePreflight(
+  cacheDir: string,
+  policy: BenchmarkCachePolicy,
+  quiet: boolean
+): void {
+  const preflight = benchmarkCachePreflight(cacheDir, policy);
+  if (!quiet) {
+    process.stderr.write(
+      `Benchmark cache: ${formatBenchmarkCacheBytes(preflight.status.totalBytes)} / ` +
+      `${formatBenchmarkCacheBytes(policy.maxBytes)} retained ` +
+      `(${preflight.status.entryCount} managed entries).\n`
+    );
+    if (preflight.warning) process.stderr.write(`Warning: ${preflight.warning}.\n`);
+  }
 }
 
 export function buildSemanticSnapshotCacheKey(input: {
@@ -1295,24 +1465,46 @@ export function buildRepositoryIndexSnapshotCacheKey(input: {
 }
 
 export function restoreRepositoryIndexSnapshot(rootPath: string, cachePath: string): boolean {
-  if (!fs.existsSync(cachePath)) return false;
   const manifestPath = `${cachePath}.manifest.json`;
+  if (!fs.existsSync(cachePath) && !fs.existsSync(manifestPath)) return false;
   if (!fs.existsSync(manifestPath)) throw new Error(`repository index snapshot manifest is missing: ${manifestPath}`);
   const manifest = record(JSON.parse(fs.readFileSync(manifestPath, "utf8")), "repository index snapshot manifest");
   const expectedKey = path.basename(cachePath, ".sqlite");
-  if (manifest.formatVersion !== 1 || manifest.cacheKey !== expectedKey) {
+  if ((manifest.formatVersion !== 1 && manifest.formatVersion !== 2) || manifest.cacheKey !== expectedKey) {
     throw new Error(`repository index snapshot identity mismatch: ${cachePath}`);
   }
   const expectedHash = string(manifest.databaseSha256, "repository index snapshot databaseSha256");
-  if (sha256(fs.readFileSync(cachePath)) !== expectedHash) {
+  const cacheRoot = benchmarkCacheRootForPath(cachePath);
+  const databasePath = manifest.formatVersion === 2
+    ? resolveSnapshotBlobPath(
+        cacheRoot,
+        string(manifest.databaseBlobPath, "repository index snapshot databaseBlobPath")
+      )
+    : cachePath;
+  if (!fs.existsSync(databasePath) || sha256(fs.readFileSync(databasePath)) !== expectedHash) {
     throw new Error(`repository index snapshot checksum mismatch: ${cachePath}`);
   }
+  if (
+    manifest.formatVersion === 2 &&
+    positiveIntegerValue(manifest.databaseBytes, "repository index snapshot databaseBytes") !== fs.statSync(databasePath).size
+  ) {
+    throw new Error(`repository index snapshot size mismatch: ${cachePath}`);
+  }
+  const entryPaths = manifest.formatVersion === 2
+    ? [manifestPath, databasePath]
+    : [manifestPath, cachePath];
+  registerBenchmarkCacheEntry(cacheRoot, {
+    id: `repository_index_snapshot:${expectedKey}`,
+    kind: "repository_index_snapshot",
+    paths: entryPaths,
+    contentSha256: expectedHash
+  });
   const sourceRootPath = string(manifest.sourceRootPath, "repository index snapshot sourceRootPath");
   const destinationRootPath = resolveRoot(rootPath);
   const paths = ensureKairnDir(destinationRootPath);
   const staged = `${paths.databasePath}.snapshot-${crypto.randomUUID()}`;
   try {
-    fs.copyFileSync(cachePath, staged, fs.constants.COPYFILE_EXCL);
+    fs.copyFileSync(databasePath, staged, fs.constants.COPYFILE_EXCL);
     if (fs.existsSync(paths.databasePath)) throw new Error("cannot restore repository index snapshot over existing state");
     fs.renameSync(staged, paths.databasePath);
     const store = new SqliteStore(paths.databasePath);
@@ -1325,9 +1517,10 @@ export function restoreRepositoryIndexSnapshot(rootPath: string, cachePath: stri
 export function persistRepositoryIndexSnapshot(rootPath: string, cachePath: string): void {
   const manifestPath = `${cachePath}.manifest.json`;
   if (fs.existsSync(cachePath) || fs.existsSync(manifestPath)) {
-    if (!fs.existsSync(cachePath) || !fs.existsSync(manifestPath)) {
+    if (!fs.existsSync(manifestPath)) {
       throw new Error(`repository index snapshot is incomplete: ${cachePath}`);
     }
+    restoreRepositoryIndexSnapshotManifestOnly(cachePath);
     return;
   }
   const sourceRootPath = resolveRoot(rootPath);
@@ -1337,24 +1530,106 @@ export function persistRepositoryIndexSnapshot(rootPath: string, cachePath: stri
   finally { store.close(); }
   const parent = path.dirname(cachePath);
   fs.mkdirSync(parent, { recursive: true });
-  const stagedDatabase = `${cachePath}.tmp-${crypto.randomUUID()}`;
+  const cacheRoot = benchmarkCacheRootForPath(cachePath);
+  const sourceDatabaseBytes = fs.statSync(paths.databasePath).size;
+  enforceBenchmarkCacheRetention(cacheRoot, {
+    additionalBytes: sourceDatabaseBytes + 4096
+  });
+  const blobRoot = path.join(cacheRoot, "content-blobs", "sha256");
+  fs.mkdirSync(blobRoot, { recursive: true });
+  const stagedDatabase = path.join(blobRoot, `.snapshot-${crypto.randomUUID()}.sqlite`);
   const stagedManifest = `${manifestPath}.tmp-${crypto.randomUUID()}`;
+  let createdBlobPath: string | undefined;
+  let completed = false;
   try {
     fs.copyFileSync(paths.databasePath, stagedDatabase, fs.constants.COPYFILE_EXCL);
+    const stagedStore = new SqliteStore(stagedDatabase);
+    try {
+      stagedStore.relocateIndexRoot(sourceRootPath, CANONICAL_REPOSITORY_SNAPSHOT_ROOT);
+      stagedStore.checkpointWal();
+    } finally {
+      stagedStore.close();
+    }
+    const databaseHash = sha256(fs.readFileSync(stagedDatabase));
+    const databaseBytes = fs.statSync(stagedDatabase).size;
+    const blobPath = path.join(blobRoot, `${databaseHash}.sqlite`);
+    const blobRelativePath = path.relative(cacheRoot, blobPath).replace(/\\/g, "/");
+    if (!fs.existsSync(blobPath)) {
+      fs.renameSync(stagedDatabase, blobPath);
+      createdBlobPath = blobPath;
+    } else if (fs.statSync(blobPath).size !== databaseBytes || sha256(fs.readFileSync(blobPath)) !== databaseHash) {
+      throw new Error(`repository index snapshot blob checksum mismatch: ${blobPath}`);
+    }
     const payload: RepositoryIndexSnapshotManifest = {
-      formatVersion: 1,
+      formatVersion: 2,
       cacheKey: path.basename(cachePath, ".sqlite"),
-      sourceRootPath,
-      databaseSha256: sha256(fs.readFileSync(stagedDatabase))
+      sourceRootPath: CANONICAL_REPOSITORY_SNAPSHOT_ROOT,
+      databaseSha256: databaseHash,
+      databaseBytes,
+      databaseBlobPath: blobRelativePath
     };
     fs.writeFileSync(stagedManifest, `${JSON.stringify(payload, null, 2)}\n`, { encoding: "utf8", flag: "wx" });
-    fs.renameSync(stagedDatabase, cachePath);
-    try { fs.renameSync(stagedManifest, manifestPath); }
-    catch (error) { fs.rmSync(cachePath, { force: true }); throw error; }
+    fs.renameSync(stagedManifest, manifestPath);
+    registerBenchmarkCacheEntry(cacheRoot, {
+      id: `repository_index_snapshot:${payload.cacheKey}`,
+      kind: "repository_index_snapshot",
+      paths: [manifestPath, blobPath],
+      contentSha256: databaseHash
+    });
+    completed = true;
   } finally {
     fs.rmSync(stagedDatabase, { force: true });
+    fs.rmSync(`${stagedDatabase}-wal`, { force: true });
+    fs.rmSync(`${stagedDatabase}-shm`, { force: true });
     fs.rmSync(stagedManifest, { force: true });
+    if (!completed) {
+      fs.rmSync(manifestPath, { force: true });
+      if (createdBlobPath) fs.rmSync(createdBlobPath, { force: true });
+    }
   }
+}
+
+function restoreRepositoryIndexSnapshotManifestOnly(cachePath: string): void {
+  const manifestPath = `${cachePath}.manifest.json`;
+  const parsed = record(JSON.parse(fs.readFileSync(manifestPath, "utf8")), "repository index snapshot manifest");
+  const expectedKey = path.basename(cachePath, ".sqlite");
+  if ((parsed.formatVersion !== 1 && parsed.formatVersion !== 2) || parsed.cacheKey !== expectedKey) {
+    throw new Error(`repository index snapshot identity mismatch: ${cachePath}`);
+  }
+  const expectedHash = string(parsed.databaseSha256, "repository index snapshot databaseSha256");
+  const cacheRoot = benchmarkCacheRootForPath(cachePath);
+  const databasePath = parsed.formatVersion === 2
+    ? resolveSnapshotBlobPath(
+        cacheRoot,
+        string(parsed.databaseBlobPath, "repository index snapshot databaseBlobPath")
+      )
+    : cachePath;
+  if (!fs.existsSync(databasePath) || sha256(fs.readFileSync(databasePath)) !== expectedHash) {
+    throw new Error(`repository index snapshot checksum mismatch: ${cachePath}`);
+  }
+  if (
+    parsed.formatVersion === 2 &&
+    positiveIntegerValue(parsed.databaseBytes, "repository index snapshot databaseBytes") !== fs.statSync(databasePath).size
+  ) {
+    throw new Error(`repository index snapshot size mismatch: ${cachePath}`);
+  }
+  registerBenchmarkCacheEntry(cacheRoot, {
+    id: `repository_index_snapshot:${expectedKey}`,
+    kind: "repository_index_snapshot",
+    paths: [manifestPath, databasePath],
+    contentSha256: expectedHash
+  });
+}
+
+function resolveSnapshotBlobPath(cacheRoot: string, relativePath: string): string {
+  if (path.isAbsolute(relativePath)) throw new Error("repository index snapshot blob path must be relative");
+  const root = path.resolve(cacheRoot);
+  const target = path.resolve(root, relativePath);
+  const blobRoot = path.resolve(root, "content-blobs", "sha256");
+  if (!target.startsWith(`${blobRoot}${path.sep}`)) {
+    throw new Error("repository index snapshot blob escapes the content-addressed store");
+  }
+  return target;
 }
 
 function repositoryIndexImplementationSha256(kairnRoot: string): string {
@@ -1369,6 +1644,14 @@ function repositoryIndexImplementationSha256(kairnRoot: string): string {
 export function restoreSnapshotEmbeddingCache(rootPath: string, cachePath: string): number {
   if (!fs.existsSync(cachePath)) return 0;
   const cache = parseSnapshotEmbeddingCache(cachePath);
+  const cacheRoot = benchmarkCacheRootForPath(cachePath);
+  const identity = embeddingCacheLedgerIdentity(cachePath);
+  registerBenchmarkCacheEntry(cacheRoot, {
+    id: identity.id,
+    kind: identity.kind,
+    paths: [cachePath],
+    contentSha256: sha256(fs.readFileSync(cachePath))
+  });
   const paths = ensureKairnDir(rootPath);
   const store = new SqliteStore(paths.databasePath);
   try {
@@ -1434,15 +1717,39 @@ export function persistSnapshotEmbeddingCache(
       left.schemaVersion.localeCompare(right.schemaVersion)
     )
   };
+  const serialized = `${JSON.stringify(payload)}\n`;
+  const cacheRoot = benchmarkCacheRootForPath(cachePath);
+  enforceBenchmarkCacheRetention(cacheRoot, {
+    additionalBytes: Buffer.byteLength(serialized)
+  });
   const parent = path.dirname(cachePath);
   fs.mkdirSync(parent, { recursive: true });
   const staged = `${cachePath}.tmp-${crypto.randomUUID()}`;
   try {
-    fs.writeFileSync(staged, `${JSON.stringify(payload)}\n`, { encoding: "utf8", flag: "wx" });
+    fs.writeFileSync(staged, serialized, { encoding: "utf8", flag: "wx" });
     replaceSnapshotCache(cachePath, staged);
+    const identity = embeddingCacheLedgerIdentity(cachePath);
+    registerBenchmarkCacheEntry(cacheRoot, {
+      id: identity.id,
+      kind: identity.kind,
+      paths: [cachePath],
+      contentSha256: sha256(Buffer.from(serialized))
+    });
   } finally {
     fs.rmSync(staged, { force: true });
   }
+}
+
+function embeddingCacheLedgerIdentity(cachePath: string): {
+  id: string;
+  kind: "semantic_embedding_snapshot" | "semantic_embedding_lineage";
+} {
+  const cacheKey = path.basename(cachePath, ".json");
+  const lineage = path.basename(path.dirname(cachePath)) === "semantic-embedding-lineage-cache";
+  return {
+    id: `${lineage ? "semantic_embedding_lineage" : "semantic_embedding_snapshot"}:${cacheKey}`,
+    kind: lineage ? "semantic_embedding_lineage" : "semantic_embedding_snapshot"
+  };
 }
 
 function snapshotEmbeddingIdentity(
@@ -1730,6 +2037,9 @@ function parseArgs(argv: string[]): MaterializeOptions {
     outPath: required("--out"),
     reportPath: required("--report-out"),
     ...(values.get("--cache") ? { cacheDir: values.get("--cache")! } : {}),
+    ...(values.get("--cache-max-bytes")
+      ? { cacheMaxBytes: positiveInteger(values.get("--cache-max-bytes")!, "--cache-max-bytes") }
+      : {}),
     ...(values.get("--snapshot-embedding-cache")
       ? { snapshotEmbeddingCachePath: values.get("--snapshot-embedding-cache")! }
       : {}),

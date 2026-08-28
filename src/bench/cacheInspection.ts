@@ -70,6 +70,7 @@ function inspectRepositoryIndexSnapshots(
   if (!fs.existsSync(snapshotRoot)) return;
   const entries = fs.readdirSync(snapshotRoot, { withFileTypes: true });
   const names = new Set(entries.filter((entry) => entry.isFile()).map((entry) => entry.name));
+  const referencedBlobs = new Set<string>();
   for (const entry of entries) {
     if (!entry.isFile() || !entry.name.endsWith(".sqlite")) continue;
     const databasePath = path.join(snapshotRoot, entry.name);
@@ -78,25 +79,55 @@ function inspectRepositoryIndexSnapshots(
       findings.push(finding("partial", relative(repositoryRoot, databasePath), "Repository index snapshot is missing its manifest."));
       continue;
     }
-    const manifestPath = path.join(snapshotRoot, manifestName);
-    try {
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
-        databaseSha256?: string;
-        cacheKey?: string;
-      };
-      const hash = crypto.createHash("sha256").update(fs.readFileSync(databasePath)).digest("hex");
-      if (manifest.cacheKey !== entry.name.slice(0, -".sqlite".length) || manifest.databaseSha256 !== hash) {
-        findings.push(finding("partial", relative(repositoryRoot, databasePath), "Repository index snapshot identity or checksum is invalid."));
-      }
-    } catch {
-      findings.push(finding("partial", relative(repositoryRoot, manifestPath), "Repository index snapshot manifest is invalid."));
-    }
   }
   for (const entry of entries) {
     if (!entry.isFile() || !entry.name.endsWith(".sqlite.manifest.json")) continue;
     const databaseName = entry.name.slice(0, -".manifest.json".length);
-    if (!names.has(databaseName)) {
-      findings.push(finding("partial", relative(repositoryRoot, path.join(snapshotRoot, entry.name)), "Repository index snapshot manifest has no database."));
+    const manifestPath = path.join(snapshotRoot, entry.name);
+    try {
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
+        formatVersion?: number;
+        databaseSha256?: string;
+        databaseBlobPath?: string;
+        databaseBytes?: number;
+        cacheKey?: string;
+      };
+      const expectedKey = databaseName.slice(0, -".sqlite".length);
+      if (manifest.cacheKey !== expectedKey || (manifest.formatVersion !== 1 && manifest.formatVersion !== 2)) {
+        throw new Error("identity mismatch");
+      }
+      let databasePath: string;
+      if (manifest.formatVersion === 1) {
+        databasePath = path.join(snapshotRoot, databaseName);
+        if (!names.has(databaseName)) throw new Error("legacy database is missing");
+      } else {
+        if (!manifest.databaseBlobPath || path.isAbsolute(manifest.databaseBlobPath)) {
+          throw new Error("content blob path is invalid");
+        }
+        const cacheRoot = path.join(artifactsRoot, "ranker-checkouts");
+        const blobRoot = path.resolve(cacheRoot, "content-blobs", "sha256");
+        databasePath = path.resolve(cacheRoot, manifest.databaseBlobPath);
+        if (!databasePath.startsWith(`${blobRoot}${path.sep}`)) throw new Error("content blob escapes cache");
+        referencedBlobs.add(databasePath);
+      }
+      if (!fs.existsSync(databasePath)) throw new Error("database is missing");
+      if (manifest.formatVersion === 2 && manifest.databaseBytes !== fs.statSync(databasePath).size) {
+        throw new Error("database size mismatch");
+      }
+      const hash = crypto.createHash("sha256").update(fs.readFileSync(databasePath)).digest("hex");
+      if (manifest.databaseSha256 !== hash) throw new Error("checksum mismatch");
+    } catch {
+      findings.push(finding("partial", relative(repositoryRoot, manifestPath), "Repository index snapshot manifest, database, or checksum is invalid."));
+    }
+  }
+  const blobRoot = path.join(artifactsRoot, "ranker-checkouts", "content-blobs", "sha256");
+  if (fs.existsSync(blobRoot)) {
+    for (const entry of fs.readdirSync(blobRoot, { withFileTypes: true })) {
+      if (!entry.isFile() || !entry.name.endsWith(".sqlite")) continue;
+      const blobPath = path.resolve(blobRoot, entry.name);
+      if (!referencedBlobs.has(blobPath)) {
+        findings.push(finding("partial", relative(repositoryRoot, blobPath), "Content-addressed repository snapshot has no manifest reference."));
+      }
     }
   }
 }

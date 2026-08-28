@@ -413,7 +413,9 @@ describe("public evidence ranker training", () => {
 
     try {
       persistRepositoryIndexSnapshot(sourceRoot, cachePath);
-      fs.appendFileSync(cachePath, "corrupt");
+      const snapshotManifest = JSON.parse(fs.readFileSync(`${cachePath}.manifest.json`, "utf8"));
+      const blobPath = path.resolve(temporary, snapshotManifest.databaseBlobPath);
+      fs.appendFileSync(blobPath, "corrupt");
       expect(() => restoreRepositoryIndexSnapshot(restoredRoot, cachePath)).toThrow(
         "repository index snapshot checksum mismatch"
       );
@@ -421,6 +423,33 @@ describe("public evidence ranker training", () => {
       fs.rmSync(temporary, { recursive: true, force: true });
       fs.rmSync(sourceRoot, { recursive: true, force: true });
       fs.rmSync(restoredRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("deduplicates byte-identical repository snapshots across cache keys", async () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-deduplicated-index-snapshot-"));
+    const sourceRoot = createFixtureRepo();
+    const runtime = new KairnRuntime(sourceRoot);
+    try {
+      await runtime.init();
+    } finally {
+      runtime.close();
+    }
+    const firstPath = path.join(temporary, "repository-index-snapshots", `${"1".repeat(64)}.sqlite`);
+    const secondPath = path.join(temporary, "repository-index-snapshots", `${"2".repeat(64)}.sqlite`);
+    try {
+      persistRepositoryIndexSnapshot(sourceRoot, firstPath);
+      persistRepositoryIndexSnapshot(sourceRoot, secondPath);
+      const first = JSON.parse(fs.readFileSync(`${firstPath}.manifest.json`, "utf8"));
+      const second = JSON.parse(fs.readFileSync(`${secondPath}.manifest.json`, "utf8"));
+      expect(first).toMatchObject({ formatVersion: 2 });
+      expect(second.databaseBlobPath).toBe(first.databaseBlobPath);
+      expect(second.databaseSha256).toBe(first.databaseSha256);
+      expect(fs.readdirSync(path.join(temporary, "content-blobs", "sha256")).filter((name) => name.endsWith(".sqlite")))
+        .toHaveLength(1);
+    } finally {
+      fs.rmSync(temporary, { recursive: true, force: true });
+      fs.rmSync(sourceRoot, { recursive: true, force: true });
     }
   });
 
@@ -697,13 +726,16 @@ describe("public evidence ranker training", () => {
 
     expect(result.caseCount).toBe(1);
     const progressPath = `${manifestPath}.progress.json`;
-    expect(JSON.parse(fs.readFileSync(progressPath, "utf8"))).toMatchObject({
-      schemaVersion: "ranker-corpus-materialization-progress.v2",
+    const completedReceipt = JSON.parse(fs.readFileSync(progressPath, "utf8"));
+    expect(completedReceipt).toMatchObject({
+      schemaVersion: "ranker-corpus-materialization-receipt.v1",
       complete: true,
       probeLimit: 256,
-      selectedCaseIds: ["materialized-train-case"],
-      completedCaseIds: ["materialized-train-case"]
+      selectedCaseIds: ["materialized-train-case"]
     });
+    expect(path.isAbsolute(completedReceipt.manifestPath)).toBe(false);
+    expect(path.isAbsolute(completedReceipt.reportPath)).toBe(false);
+    expect(fs.existsSync(`${progressPath}.cases`)).toBe(false);
     expect(readIsolatedMaterializationProgress(progressPath, {
       kairnCommit: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
       intakeSha256: crypto.createHash("sha256").update(fs.readFileSync(intakePath)).digest("hex"),
