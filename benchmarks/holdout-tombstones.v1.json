@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "benchmark-holdout-tombstones.v1",
+  "entries": [
+    {
+      "artifactSha256": "dc3f9e6996c05e3a9d9ae68bf492dc80da6dc45ec6561e7cda04a14fa7631775",
+      "status": "contaminated",
+      "eventId": "development-inspection-20260828",
+      "recordedAt": "2026-08-28",
+      "reason": "The detached case identities were enumerated during development inspection. The artifact is permanently ineligible for model selection, evaluation, or publication evidence.",
+      "replacement": "Create a new sealed holdout from fresh repository lineages after ranking work is frozen."
+    }
+  ]
+}

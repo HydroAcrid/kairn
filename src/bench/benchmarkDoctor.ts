@@ -209,6 +209,11 @@ function checkCampaignData(checks: BenchmarkDoctorCheck[], resolved: ResolvedCam
       }
     }
     pass(checks, "data_isolation", `Validated ${lineages.size} lineage assignments; calibration cannot load the detached holdout artifact.`);
+    if (resolved.holdoutSafety.status === "contaminated") {
+      warn(checks, "holdout_safety", `Detached holdout is permanently blocked: ${resolved.holdoutSafety.reason ?? "contaminated"}`);
+    } else {
+      pass(checks, "holdout_safety", "Detached holdout remains sealed.");
+    }
   } catch (error) {
     fail(checks, "data_isolation", errorMessage(error));
   }

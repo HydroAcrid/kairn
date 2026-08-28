@@ -67,6 +67,12 @@ export type ResolvedCampaign = {
   manifestSha256: string;
   artifacts: ResolvedCampaignArtifact[];
   caseIds: Record<"train" | "calibration" | "holdout", string[]>;
+  holdoutSafety: {
+    status: "sealed" | "contaminated";
+    eventId: string | null;
+    reason: string | null;
+    replacement: string | null;
+  };
   fingerprint: string;
 };
 
@@ -117,6 +123,7 @@ export function loadBenchmarkCampaign(manifestPath: string, options?: { verifyAr
       throw new Error("sealed holdout artifact may only be allowed for the holdout stage");
     }
   }
+  const holdoutSafety = resolveHoldoutSafety(repositoryRoot, holdoutArtifact.actualSha256);
   const fingerprintPayload = {
     campaign,
     manifestSha256: infraSha256(bytes),
@@ -129,14 +136,45 @@ export function loadBenchmarkCampaign(manifestPath: string, options?: { verifyAr
     manifestSha256: sha256(bytes),
     artifacts: resolvedArtifacts,
     caseIds,
+    holdoutSafety,
     fingerprint: infraSha256(JSON.stringify(fingerprintPayload))
   };
 }
 
 export function assertStageDoesNotOpenHoldout(resolved: ResolvedCampaign, stage: BenchmarkStage): void {
-  if (stage === "holdout") return;
+  if (stage === "holdout") {
+    if (resolved.holdoutSafety.status === "contaminated") {
+      throw new Error(`holdout artifact is contaminated (${resolved.holdoutSafety.eventId ?? "unrecorded event"}) and must be replaced`);
+    }
+    return;
+  }
   const forbidden = resolved.artifacts.filter((artifact) => artifact.kind === "holdout" && artifact.allowedStages.includes(stage));
   if (forbidden.length > 0) throw new Error(`${stage} cannot load holdout artifacts: ${forbidden.map((item) => item.id).join(", ")}`);
+}
+
+function resolveHoldoutSafety(
+  repositoryRoot: string,
+  artifactSha256: string
+): ResolvedCampaign["holdoutSafety"] {
+  const target = path.join(repositoryRoot, "benchmarks", "holdout-tombstones.v1.json");
+  if (!fs.existsSync(target)) return { status: "sealed", eventId: null, reason: null, replacement: null };
+  const root = record(JSON.parse(fs.readFileSync(target, "utf8")) as unknown, "holdout tombstones");
+  if (root.schemaVersion !== "benchmark-holdout-tombstones.v1") throw new Error("unsupported holdout tombstone schema");
+  const matches = array(root.entries, "holdout tombstones.entries").map((value, index) => {
+    const item = record(value, `holdout tombstones.entries[${index}]`);
+    return {
+      artifactSha256: hash(item.artifactSha256, `holdout tombstones.entries[${index}].artifactSha256`),
+      status: exact(item.status, "contaminated", `holdout tombstones.entries[${index}].status`),
+      eventId: string(item.eventId, `holdout tombstones.entries[${index}].eventId`),
+      reason: string(item.reason, `holdout tombstones.entries[${index}].reason`),
+      replacement: string(item.replacement, `holdout tombstones.entries[${index}].replacement`)
+    };
+  }).filter((item) => item.artifactSha256 === artifactSha256);
+  if (matches.length > 1) throw new Error(`holdout artifact ${artifactSha256} has duplicate contamination records`);
+  const match = matches[0];
+  return match
+    ? { status: "contaminated", eventId: match.eventId, reason: match.reason, replacement: match.replacement }
+    : { status: "sealed", eventId: null, reason: null, replacement: null };
 }
 
 export function derivePipelineCacheKeys(input: {

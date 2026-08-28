@@ -76,6 +76,7 @@
     "benchmark:tier-b": "tsx scripts/verify-benchmark-tier-b.ts",
     "benchmark:reproduce": "tsx scripts/benchmark-reproduce.ts",
     "benchmark:rankability-audit": "tsx scripts/benchmark-rankability-audit.ts",
+    "benchmark:balanced-required-source": "tsx scripts/evaluate-balanced-required-source.ts",
     "verify:release-checksums": "node scripts/verify-release-checksums.mjs",
     "verify:package-contents": "node scripts/verify-package-contents.mjs",
     "verify:supply-chain-reports": "node scripts/verify-supply-chain-reports.mjs",

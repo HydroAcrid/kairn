@@ -1,0 +1,197 @@
+{
+  "schemaVersion": "balanced-required-source-cohort.v1",
+  "cohortId": "kairn-v02c-balanced-required-source-20260828",
+  "promotionEligible": false,
+  "sourceBranch": "codex/v0.2c-balanced-required-source",
+  "baseCommit": "d31e0df982e584678ff878f1700dd64b2033dc41",
+  "selection": {
+    "population": "v178 train/calibration materialization; calibration split only",
+    "rule": "Lexicographically first case ID in each language/scenario cell.",
+    "caseCount": 15,
+    "languageCount": 5,
+    "scenarioCount": 3,
+    "rankInspectionDisclosure": "The v185 artifact existed and case ranks were inspectable during cohort construction. The deterministic selection rule does not use ranks, but this remains retrospective development evidence."
+  },
+  "evidencePolicy": {
+    "developmentOnly": true,
+    "publicClaimEligible": false,
+    "reason": "These calibration lineages contributed to model development and are not an independent holdout.",
+    "publicProofRequires": "A fresh sealed lineage-disjoint holdout followed by quality-passing live-agent runs."
+  },
+  "holdout": {
+    "status": "contaminated_do_not_use",
+    "eventId": "development-inspection-20260828",
+    "replacementRequired": true
+  },
+  "inputs": {
+    "candidateManifest": {
+      "path": "artifacts/ranker-corpus.semantic-v178-doc-interactions-train-cal135.json",
+      "sha256": "8d3a1a6b80eeccf880bfc215628b7b7e3d21889c1feb47573e14673cc42047a7"
+    },
+    "candidateReport": {
+      "path": "artifacts/ranker-corpus.semantic-v178-doc-interactions-train-cal135.report.json",
+      "sha256": "b311ff0b74a6cf7186a24dd8f4a9197abb1f3f14a9c7a75070684a116c9c00f2"
+    },
+    "baselineModel": {
+      "id": "v185-pairwise-reviewed-negatives",
+      "path": "artifacts/ranker-semantic-document-features-pairwise.v185-reviewed-negatives.json",
+      "sha256": "ee84440d1bd18ccd0dbca732d8b0b6b49000fb4448c64857c7fd7befa3081011"
+    }
+  },
+  "stoppingRule": {
+    "maximumMechanismExperiments": 1,
+    "minimumRequiredFileRecallAt64AbsoluteGain": 0.05,
+    "alternativeGainRule": "Paired case-bootstrap 95% confidence interval lower bound is above zero.",
+    "expectedCalibrationErrorMax": 0.05,
+    "recallAt5NoninferiorityMargin": 0.02,
+    "mrrNoninferiorityMargin": 0.02,
+    "noGeneratedVendorTopOne": true,
+    "ifNoQualifyingGain": "Freeze ranking changes and focus on beta users, reporting, installation, and quality-gated live token evidence."
+  },
+  "cases": [
+    {
+      "id": "v02c-calibration-python-source_localization-091",
+      "language": "python",
+      "scenario": "source_localization",
+      "requiredExistingFiles": ["xarray/core/combine.py"],
+      "excludedExistingPatchFiles": [],
+      "creationFilesExcludedFromRecall": [],
+      "review": "The public patch changes the production combine implementation that raises the reported monotonic-coordinate error."
+    },
+    {
+      "id": "v02c-calibration-python-failure_first-094",
+      "language": "python",
+      "scenario": "failure_first",
+      "requiredExistingFiles": ["seaborn/_core/plot.py"],
+      "excludedExistingPatchFiles": [],
+      "creationFilesExcludedFromRecall": [],
+      "review": "The failing scaling behavior is implemented and fixed in the production plot module."
+    },
+    {
+      "id": "v02c-calibration-python-long_session-097",
+      "language": "python",
+      "scenario": "long_session",
+      "requiredExistingFiles": ["seaborn/_core/scales.py", "seaborn/utils.py"],
+      "excludedExistingPatchFiles": [],
+      "creationFilesExcludedFromRecall": [],
+      "review": "The public fix changes both production scale formatting and its shared formatting utility."
+    },
+    {
+      "id": "v02c-calibration-typescript-source_localization-100",
+      "language": "typescript",
+      "scenario": "source_localization",
+      "requiredExistingFiles": ["packages/babel-traverse/src/scope/lib/renamer.ts"],
+      "excludedExistingPatchFiles": [],
+      "creationFilesExcludedFromRecall": [],
+      "review": "Scope rename behavior and the shorthand-property correction live in the production renamer implementation."
+    },
+    {
+      "id": "v02c-calibration-typescript-failure_first-103",
+      "language": "typescript",
+      "scenario": "failure_first",
+      "requiredExistingFiles": ["packages/babel-parser/src/parser/expression.js"],
+      "excludedExistingPatchFiles": [],
+      "creationFilesExcludedFromRecall": [],
+      "review": "Existing strong oracle retained: the parser expression implementation owns the invalid await/yield rejection."
+    },
+    {
+      "id": "v02c-calibration-typescript-long_session-106",
+      "language": "typescript",
+      "scenario": "long_session",
+      "requiredExistingFiles": [
+        "src/components/structures/RoomSearch.tsx",
+        "src/components/structures/RoomView.tsx",
+        "src/components/views/rooms/EditMessageComposer.js",
+        "src/components/views/rooms/RoomSublist.tsx",
+        "src/components/views/rooms/SendMessageComposer.js"
+      ],
+      "excludedExistingPatchFiles": [
+        "src/components/structures/LoggedInView.tsx",
+        "src/components/views/rooms/BasicMessageComposer.tsx"
+      ],
+      "creationFilesExcludedFromRecall": ["src/KeyBindingsDefaults.ts", "src/KeyBindingsManager.ts"],
+      "review": "Existing strong oracle retained. Two supporting edits are related but not required-source positives; two newly created files cannot be retrieved from the base checkout."
+    },
+    {
+      "id": "v02c-calibration-go-source_localization-109",
+      "language": "go",
+      "scenario": "source_localization",
+      "requiredExistingFiles": ["routergroup.go"],
+      "excludedExistingPatchFiles": [],
+      "creationFilesExcludedFromRecall": [],
+      "review": "StaticFS routing behavior that produces the duplicate 404 log is implemented in routergroup.go."
+    },
+    {
+      "id": "v02c-calibration-go-failure_first-112",
+      "language": "go",
+      "scenario": "failure_first",
+      "requiredExistingFiles": ["logger.go"],
+      "excludedExistingPatchFiles": [],
+      "creationFilesExcludedFromRecall": [],
+      "review": "The prompt points to and the public patch changes the production status-color logic in logger.go."
+    },
+    {
+      "id": "v02c-calibration-go-long_session-115",
+      "language": "go",
+      "scenario": "long_session",
+      "requiredExistingFiles": ["binding/binding.go", "context.go"],
+      "excludedExistingPatchFiles": [],
+      "creationFilesExcludedFromRecall": ["binding/header.go"],
+      "review": "The existing binding registry and Context API must both change to expose header binding; the new implementation file is excluded from base-checkout recall."
+    },
+    {
+      "id": "v02c-calibration-java-source_localization-118",
+      "language": "java",
+      "scenario": "source_localization",
+      "requiredExistingFiles": ["src/main/java/com/fasterxml/jackson/core/util/TextBuffer.java"],
+      "excludedExistingPatchFiles": [],
+      "creationFilesExcludedFromRecall": [],
+      "review": "The empty-buffer return contract is implemented in the production TextBuffer class."
+    },
+    {
+      "id": "v02c-calibration-java-failure_first-121",
+      "language": "java",
+      "scenario": "failure_first",
+      "requiredExistingFiles": ["src/main/java/com/fasterxml/jackson/core/filter/FilteringGeneratorDelegate.java"],
+      "excludedExistingPatchFiles": [],
+      "creationFilesExcludedFromRecall": [],
+      "review": "The child object-context defect is in the production filtering generator delegate."
+    },
+    {
+      "id": "v02c-calibration-java-long_session-124",
+      "language": "java",
+      "scenario": "long_session",
+      "requiredExistingFiles": ["src/main/java/com/fasterxml/jackson/core/io/NumberInput.java"],
+      "excludedExistingPatchFiles": [],
+      "creationFilesExcludedFromRecall": [],
+      "review": "Stringified-number parsing with a trailing dot is implemented in NumberInput."
+    },
+    {
+      "id": "v02c-calibration-cpp-source_localization-127",
+      "language": "cpp",
+      "scenario": "source_localization",
+      "requiredExistingFiles": ["include/fmt/chrono.h"],
+      "excludedExistingPatchFiles": [],
+      "creationFilesExcludedFromRecall": [],
+      "review": "Large-date time_point formatting is implemented in the production chrono header."
+    },
+    {
+      "id": "v02c-calibration-cpp-failure_first-130",
+      "language": "cpp",
+      "scenario": "failure_first",
+      "requiredExistingFiles": ["include/fmt/base.h"],
+      "excludedExistingPatchFiles": [],
+      "creationFilesExcludedFromRecall": [],
+      "review": "format_context and its args accessor are defined in the production base header."
+    },
+    {
+      "id": "v02c-calibration-cpp-long_session-133",
+      "language": "cpp",
+      "scenario": "long_session",
+      "requiredExistingFiles": ["include/fmt/format.h", "include/fmt/std.h"],
+      "excludedExistingPatchFiles": [],
+      "creationFilesExcludedFromRecall": [],
+      "review": "The public fix spans production format spec copying and std::bitset/xchar formatting."
+    }
+  ]
+}

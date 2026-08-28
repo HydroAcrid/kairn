@@ -29,7 +29,9 @@ describe("benchmark infrastructure contracts", () => {
     expect(campaign.caseIds.calibration).toHaveLength(45);
     expect(campaign.caseIds.holdout).toHaveLength(0);
     expect(campaign.artifacts.find((item) => item.kind === "holdout")?.allowedStages).toEqual(["holdout"]);
+    expect(campaign.holdoutSafety.status).toBe("contaminated");
     expect(() => assertStageDoesNotOpenHoldout(campaign, "calibration")).not.toThrow();
+    expect(() => assertStageDoesNotOpenHoldout(campaign, "holdout")).toThrow("contaminated");
   });
 
   it("loads the rankability campaign and keeps detached holdout inaccessible", () => {
