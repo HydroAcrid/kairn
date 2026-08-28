@@ -7,6 +7,14 @@ import { initializeBenchmarkRun, registerRunArtifact, verifyRegisteredArtifacts 
 import { benchmarkInfrastructureEvidenceHash, runBenchmarkDoctor } from "../src/bench/benchmarkDoctor.js";
 import { inspectBenchmarkCache, quarantineBenchmarkCacheFinding } from "../src/bench/cacheInspection.js";
 import {
+  benchmarkCachePolicy,
+  enforceBenchmarkCacheRetention,
+  inspectBenchmarkCacheRetention,
+  leaseBenchmarkCacheEntry,
+  registerBenchmarkCacheEntry,
+  type BenchmarkCachePolicy
+} from "../src/bench/cacheRetention.js";
+import {
   assertStageDoesNotOpenHoldout,
   classifyBenchmarkRun,
   derivePipelineCacheKeys,
@@ -185,9 +193,139 @@ describe("benchmark infrastructure contracts", () => {
     const findings = inspectBenchmarkCache(root);
     expect(findings.map((finding) => finding.path)).toEqual(expect.arrayContaining([
       path.relative(root, orphanDatabase).replace(/\\/g, "/"),
-      path.relative(root, corruptDatabase).replace(/\\/g, "/"),
+      path.relative(root, `${corruptDatabase}.manifest.json`).replace(/\\/g, "/"),
       path.relative(root, orphanManifest).replace(/\\/g, "/")
     ]));
+  });
+
+  it("uses a bounded eight-GiB cache policy by default", () => {
+    const policy = benchmarkCachePolicy({});
+    expect(policy).toMatchObject({
+      schemaVersion: "benchmark-cache-policy.v1",
+      maxBytes: 8 * 1024 ** 3,
+      targetBytes: Math.floor(8 * 1024 ** 3 * 0.8),
+      warningBytes: Math.floor(8 * 1024 ** 3 * 0.8)
+    });
+  });
+
+  it("evicts least-recently-used entries to the low-water mark", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-cache-lru-"));
+    const policy: BenchmarkCachePolicy = {
+      schemaVersion: "benchmark-cache-policy.v1",
+      maxBytes: 60_000,
+      targetBytes: 40_000,
+      warningBytes: 40_000,
+      minimumFreeBytes: 1
+    };
+    try {
+      const files = ["old.bin", "middle.bin", "new.bin"].map((name) => path.join(root, name));
+      for (const target of files) fs.writeFileSync(target, Buffer.alloc(20_000));
+      registerBenchmarkCacheEntry(root, { id: "old", kind: "repository", paths: [files[0]!] }, new Date(1_000));
+      registerBenchmarkCacheEntry(root, { id: "middle", kind: "repository", paths: [files[1]!] }, new Date(2_000));
+      registerBenchmarkCacheEntry(root, { id: "new", kind: "repository", paths: [files[2]!] }, new Date(3_000));
+
+      const result = enforceBenchmarkCacheRetention(root, { policy, now: new Date(4_000) });
+      expect(result.evictions.map((item) => item.id)).toEqual(["old", "middle"]);
+      expect(fs.existsSync(files[0]!)).toBe(false);
+      expect(fs.existsSync(files[1]!)).toBe(false);
+      expect(fs.existsSync(files[2]!)).toBe(true);
+      expect(result.status.totalBytes).toBeLessThanOrEqual(policy.maxBytes);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("never evicts an actively leased cache entry", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-cache-lease-"));
+    const policy: BenchmarkCachePolicy = {
+      schemaVersion: "benchmark-cache-policy.v1",
+      maxBytes: 50_000,
+      targetBytes: 30_000,
+      warningBytes: 30_000,
+      minimumFreeBytes: 1
+    };
+    try {
+      const protectedPath = path.join(root, "protected.bin");
+      const disposablePath = path.join(root, "disposable.bin");
+      fs.writeFileSync(protectedPath, Buffer.alloc(20_000));
+      fs.writeFileSync(disposablePath, Buffer.alloc(30_000));
+      registerBenchmarkCacheEntry(root, { id: "protected", kind: "repository", paths: [protectedPath] }, new Date(1_000));
+      registerBenchmarkCacheEntry(root, { id: "disposable", kind: "repository", paths: [disposablePath] }, new Date(2_000));
+      const lease = leaseBenchmarkCacheEntry(root, "protected", 60_000, new Date(3_000));
+
+      const result = enforceBenchmarkCacheRetention(root, { policy, now: new Date(4_000) });
+      expect(result.evictions.map((item) => item.id)).toContain("disposable");
+      expect(fs.existsSync(protectedPath)).toBe(true);
+      expect(fs.existsSync(disposablePath)).toBe(false);
+      expect(inspectBenchmarkCacheRetention(root, policy, new Date(4_000)).protectedBytes).toBeGreaterThan(0);
+      lease.release();
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("adopts legacy snapshot pairs into the bounded ledger", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-cache-legacy-"));
+    const snapshots = path.join(root, "repository-index-snapshots");
+    fs.mkdirSync(snapshots, { recursive: true });
+    const key = "a".repeat(64);
+    const database = path.join(snapshots, `${key}.sqlite`);
+    const bytes = Buffer.from("legacy repository index");
+    fs.writeFileSync(database, bytes);
+    fs.writeFileSync(`${database}.manifest.json`, JSON.stringify({
+      formatVersion: 1,
+      cacheKey: key,
+      sourceRootPath: "/old/root",
+      databaseSha256: crypto.createHash("sha256").update(bytes).digest("hex")
+    }));
+    try {
+      const status = inspectBenchmarkCacheRetention(root, {
+        schemaVersion: "benchmark-cache-policy.v1",
+        maxBytes: 1_000_000,
+        targetBytes: 800_000,
+        warningBytes: 800_000,
+        minimumFreeBytes: 1
+      });
+      expect(status.entries).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          id: `repository_index_snapshot:${key}`,
+          kind: "repository_index_snapshot"
+        })
+      ]));
+      expect(fs.existsSync(path.join(root, "cache-ledger.v1.json"))).toBe(true);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps repeated cache writes bounded instead of growing with case count", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-cache-bounded-growth-"));
+    const policy: BenchmarkCachePolicy = {
+      schemaVersion: "benchmark-cache-policy.v1",
+      maxBytes: 180_000,
+      targetBytes: 120_000,
+      warningBytes: 120_000,
+      minimumFreeBytes: 1
+    };
+    try {
+      for (let index = 0; index < 50; index += 1) {
+        const target = path.join(root, `${String(index).padStart(3, "0")}.bin`);
+        fs.writeFileSync(target, Buffer.alloc(16_000, index));
+        registerBenchmarkCacheEntry(root, {
+          id: `case:${String(index).padStart(3, "0")}`,
+          kind: "semantic_embedding_snapshot",
+          paths: [target]
+        }, new Date(index * 1_000));
+        enforceBenchmarkCacheRetention(root, { policy, now: new Date(index * 1_000 + 1) });
+      }
+      const status = inspectBenchmarkCacheRetention(root, policy, new Date(60_000));
+      expect(status.totalBytes).toBeLessThanOrEqual(policy.maxBytes);
+      expect(status.entryCount).toBeLessThan(50);
+      expect(fs.existsSync(path.join(root, "049.bin"))).toBe(true);
+      expect(fs.existsSync(path.join(root, "000.bin"))).toBe(false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 

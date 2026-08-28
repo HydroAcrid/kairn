@@ -24,7 +24,7 @@ pnpm benchmark:doctor -- --profile ranker --manifest benchmarks/campaigns/v02c-r
 pnpm benchmark:doctor -- --profile live
 ```
 
-The ranker profile checks the campaign manifest, artifact hashes, exact train/calibration case IDs, lineage isolation, Git branch and upstream state, pinned runtimes, dependencies, free disk, and the local semantic model. It never downloads a model or opens holdout.
+The ranker profile checks the campaign manifest, artifact hashes, exact train/calibration case IDs, lineage isolation, Git branch and upstream state, pinned runtimes, dependencies, free disk, retained cache size, and the local semantic model. It never downloads a model or opens holdout. Cache usage warns at 80% of its configured ceiling and fails preflight above the ceiling.
 
 The live profile additionally requires a working Docker server, locally present digest-pinned images in `KAIRN_BENCHMARK_IMAGES`, both provider credentials, and `KAIRN_ALLOW_EXTERNAL_TRAJECTORY=1`. Credentials are never printed or hashed into public output.
 
@@ -60,7 +60,34 @@ Calibration reproduction retrains v166 and v170 from their pinned rows and requi
 
 Corpus materialization caches repository inventory/parser/index snapshots separately from semantic embeddings, candidate fusion, labels, training rows, and models. Immutable cases at the same repository commit restore the index into a fresh detached worktree and relocate only index-owned rows; session, telemetry, and evaluation state are never copied. Parser/document/model changes invalidate the snapshot, while reporting or ranker-training changes reuse it. Snapshot database/manifest pairs are checksummed and fail closed when incomplete or corrupt.
 
-`benchmark:cache` is read-only by default. `--quarantine <finding-id>` moves exactly one known incomplete/corrupt artifact into `artifacts/cache-quarantine`; it never recursively deletes caches or worktrees.
+### Bounded cache retention
+
+An earlier materialization cache exceeded 30 GiB because every implementation fingerprint retained another full SQLite snapshot and completed per-case resume journals were never retired. That was a retention defect, not expected repository growth.
+
+The permanent cache contract is:
+
+- `artifacts/ranker-checkouts` has an 8 GiB default retained-size ceiling and an 80% low-water target;
+- repository caches, semantic snapshot caches, lineage caches, and repository-index snapshots are registered in `cache-ledger.v1.json`;
+- eviction is least-recently-used, while active repository checkouts carry expiring leases and cannot be evicted;
+- SQLite snapshots are normalized to a checkout-independent root and stored once by SHA-256, so distinct cache keys share byte-identical database blobs;
+- successful resumable materialization replaces per-case journals with one checksummed receipt; interrupted runs retain their atomic journals;
+- legacy v1 snapshot pairs are adopted into the ledger automatically;
+- corrupt or ambiguous entries fail closed and remain visible to cache inspection.
+
+```bash
+# Read-only corruption findings plus quota/LRU status.
+pnpm benchmark:cache
+
+# Apply LRU cleanup if retained data is over the ceiling.
+pnpm benchmark:cache -- --prune
+
+# Inspect behavior under a temporary smaller ceiling.
+pnpm benchmark:cache -- --max-bytes 4294967296
+```
+
+The ceiling can be changed deliberately with `KAIRN_BENCHMARK_CACHE_MAX_BYTES`. `KAIRN_BENCHMARK_CACHE_TARGET_RATIO`, `KAIRN_BENCHMARK_CACHE_WARNING_RATIO`, and `KAIRN_BENCHMARK_CACHE_MIN_FREE_BYTES` control low-water, warning, and working-space policy. These are benchmark-cache controls; they do not change repository `.kairn` state gates or the separately bounded semantic-model cache.
+
+`benchmark:cache` is non-destructive by default. `--prune` deletes only ledger-owned, reconstructible cache entries and preserves active leases. `--quarantine <finding-id>` moves exactly one known incomplete/corrupt artifact into `artifacts/cache-quarantine`; neither operation recursively targets an unknown directory.
 
 ## Reporting and rankability
 

@@ -112,9 +112,12 @@ The resumable public-oracle materialization writes:
 - `artifacts/ranker-corpus.semantic-v4-oracle38-reviewed.report.json`
 - `artifacts/ranker-corpus.semantic-v4-oracle38-reviewed.json.progress.json`
 
-Each successful isolated case is written atomically to the progress file.
+Each successful isolated case is written to an atomic per-case resume journal.
 `--resume` refuses to reuse progress unless the Kairn commit, reviewed-intake
-hash, and ordered case set are identical.
+hash, and ordered case set are identical. After both final artifacts are
+durable, Kairn replaces those case journals with a small receipt containing
+the artifact paths and SHA-256 hashes. Repeating the same completed command
+validates and reuses that receipt instead of retaining duplicate case rows.
 
 ```bash
 CASE_IDS="$(node -e 'const fs=require("fs");const x=JSON.parse(fs.readFileSync("benchmarks/semantic/oracle38-cases-v1.json","utf8"));process.stdout.write(x.caseIds.join(","))')"
