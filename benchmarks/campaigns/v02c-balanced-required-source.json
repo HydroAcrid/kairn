@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "benchmark-campaign.v1",
+  "campaignId": "kairn-v02c-balanced-required-source-20260828",
+  "nonEvidence": false,
+  "source": {
+    "branch": "codex/v0.2c-balanced-required-source",
+    "baseCommit": "fab9a74e0fce4aca607903f2eb14f86f3dc7e9c8"
+  },
+  "runtime": {
+    "nodeMajor": 24,
+    "pnpm": "10.31.0",
+    "python": "3.12"
+  },
+  "semantic": {
+    "modelId": "jina-code-v2-q8",
+    "upstreamRevision": "516f4baf13dec4ddddda8631e019b5737c8bc250",
+    "documentSchemaVersion": "semantic-documents-v5",
+    "candidateLimit": 64,
+    "enrichedCandidateLimit": 128
+  },
+  "cases": {
+    "artifactId": "document-pool-v178",
+    "expectedCounts": {
+      "train": 90,
+      "calibration": 45,
+      "holdout": 0
+    },
+    "splitField": "split",
+    "idField": "id",
+    "format": "json_cases"
+  },
+  "holdout": {
+    "status": "sealed_detached",
+    "artifactId": "detached-holdout",
+    "openedEvaluationId": null
+  },
+  "artifacts": [
+    {
+      "id": "document-pool-v178",
+      "kind": "candidate_pool",
+      "path": "artifacts/ranker-corpus.semantic-v178-doc-interactions-train-cal135.json",
+      "sha256": "8d3a1a6b80eeccf880bfc215628b7b7e3d21889c1feb47573e14673cc42047a7",
+      "parents": [],
+      "allowedStages": ["tier_a", "calibration", "rankability"]
+    },
+    {
+      "id": "document-report-v178",
+      "kind": "evaluation",
+      "path": "artifacts/ranker-corpus.semantic-v178-doc-interactions-train-cal135.report.json",
+      "sha256": "b311ff0b74a6cf7186a24dd8f4a9197abb1f3f14a9c7a75070684a116c9c00f2",
+      "parents": ["document-pool-v178"],
+      "allowedStages": ["tier_a", "calibration", "rankability"]
+    },
+    {
+      "id": "model-v185",
+      "kind": "model",
+      "path": "artifacts/ranker-semantic-document-features-pairwise.v185-reviewed-negatives.json",
+      "sha256": "ee84440d1bd18ccd0dbca732d8b0b6b49000fb4448c64857c7fd7befa3081011",
+      "parents": ["document-pool-v178", "document-report-v178"],
+      "allowedStages": ["tier_a", "calibration", "rankability"]
+    },
+    {
+      "id": "balanced-cohort-v1",
+      "kind": "review",
+      "path": "benchmarks/cohorts/v02c-balanced-required-source.v1.json",
+      "sha256": "72d46f94a0661d700505369e7a89ae5ae451d2c9b2ff214cbce2349bdff127be",
+      "parents": ["document-pool-v178", "document-report-v178", "model-v185"],
+      "allowedStages": ["tier_a", "rankability"]
+    },
+    {
+      "id": "detached-holdout",
+      "kind": "holdout",
+      "path": "artifacts/ranker-corpus-intake.detached-holdout-v1.json",
+      "sha256": "dc3f9e6996c05e3a9d9ae68bf492dc80da6dc45ec6561e7cda04a14fa7631775",
+      "parents": [],
+      "allowedStages": ["holdout"]
+    }
+  ],
+  "gates": {
+    "boundedPoolRequiredSourceMissesAt128": 0,
+    "servedRecallAt64Overall": 0.99,
+    "servedRecallAt64PerLanguage": 0.95,
+    "expectedCalibrationErrorMax": 0.05,
+    "generatedVendorTopOneMax": 0
+  }
+}
