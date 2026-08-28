@@ -2,8 +2,8 @@
   "schemaVersion": "benchmark-infrastructure-report.v1",
   "profile": "ranker",
   "campaignId": "kairn-v02c-balanced-required-source-20260828",
-  "campaignFingerprint": "5993fd114bce25a981197213b7d078c1c59d06089f8770bf4992eeed50e01004",
-  "generatedAt": "2026-08-28T19:52:15.770Z",
+  "campaignFingerprint": "d62f2203ddf0654bf1a6194dd106860a03f0c77ba1cc85205f4793f4a7669d2c",
+  "generatedAt": "2026-08-28T19:57:34.292Z",
   "platform": {
     "platform": "linux",
     "architecture": "x64",
@@ -60,7 +60,7 @@
     {
       "id": "disk",
       "status": "pass",
-      "detail": "884.26 GiB available."
+      "detail": "884.08 GiB available."
     },
     {
       "id": "cache_retention",

@@ -4,6 +4,7 @@
   "recordedAt": "2026-08-28",
   "branch": "codex/v0.2c-balanced-required-source",
   "sourceCommit": "39667a4a1a1e07ebbb8f245eab518701235905cf",
+  "finalValidationCommit": "29106380c1e3045df3b11ad19d68ebc2551a3cfa",
   "campaign": "benchmarks/campaigns/v02c-balanced-required-source.json",
   "cohort": {
     "path": "benchmarks/cohorts/v02c-balanced-required-source.v1.json",
@@ -28,7 +29,7 @@
     "cacheRetained": "4.1 KiB / 8.00 GiB",
     "report": {
       "path": "artifacts/balanced-required-source.infrastructure.json",
-      "sha256": "83eae1d0ce980d84b85a3ddece2eeba76773017f2c23f94c85e376304ad69461"
+      "sha256": "fc6532ebcb6792e2d85228481179871d72dc71e46649baec62409bae3835ed0e"
     }
   },
   "baseline": {
