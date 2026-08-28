@@ -453,4 +453,48 @@ required-source diagnostic has only 10 cases, no Python cases, and uneven
 language/scenario coverage. Expand and review that cohort first, then rerun the
 frozen rankability audit. A subsequent model-family experiment is allowed only
 if the larger reviewed set can distinguish feature insufficiency from objective
-or capacity failure. The detached holdout and paid provider runs remain sealed.
+or capacity failure.
+
+## Balanced 15-cell required-source stopping result
+
+The follow-up cohort froze one deterministic calibration case in every
+language/scenario cell: 15 cases across Python, TypeScript, Go, Java, and C++,
+crossed with source localization, failure-first debugging, and long sessions.
+Manual public-patch review produced 22 required existing production files. New
+files were recorded but excluded from retrieval recall because they do not
+exist in the starting checkout.
+
+The exact pushed campaign passed the ranker infrastructure doctor with the
+pinned Node, pnpm, Python, and Jina runtimes. It reused the frozen v178 pools
+and ran v185 once without rematerializing repositories, retraining a model,
+opening a holdout, or calling a paid provider.
+
+| Metric | v185 balanced result |
+| --- | ---: |
+| Strict full case Recall@64 | 100.00% (15/15) |
+| Required-file Recall@64 | 100.00% (22/22) |
+| Required-file Recall@5 | 68.18% (15/22) |
+| MRR | 0.4795 |
+| Calibration ECE | 0.0317 |
+| Generated/vendor top-one violations | 0 |
+
+Source-localization and failure-first cells reached 100% Recall@5. Long-session
+cells reached 41.67%, and TypeScript reached 28.57%, showing that multi-file
+prioritization remains the main beta risk even though every reviewed required
+file is available within the served 64.
+
+The preregistered discipline required roughly a five-point absolute
+required-file Recall@64 gain, or a paired confidence interval above zero, before
+continuing ranking work. Because v185 is already at the 100% Recall@64 ceiling
+on this cohort, no qualifying experiment is possible. Ranking work is therefore
+frozen. The next work is beta-user installation, reporting, and quality-gated
+live token evidence—not another offline tuning loop.
+
+This is retrospective development evidence, not a public effectiveness claim.
+These calibration lineages contributed to model development, and v185 ranks
+were inspectable while the deterministic cohort was constructed. In addition,
+the old detached holdout identities were exposed during a development
+inspection on 2026-08-28. That artifact is now permanently tombstoned and was
+not used here. A new sealed holdout must use fresh repository lineages. Exact
+hashes and the stopping decision are recorded in
+`benchmarks/checkpoints/v02c-balanced-required-source-39667a4.json`.

@@ -42,6 +42,23 @@ describe("benchmark infrastructure contracts", () => {
     expect(() => assertStageDoesNotOpenHoldout(campaign, "rankability")).not.toThrow();
   });
 
+  it("binds holdout contamination into the campaign fingerprint and blocks holdout execution", () => {
+    const fixture = writeFixtureCampaign({ leakLineage: false });
+    const sealed = loadBenchmarkCampaign(fixture.manifest);
+    const holdoutPath = path.join(fixture.root, "artifacts", "holdout.json");
+    fs.writeFileSync(path.join(fixture.root, "benchmarks", "holdout-tombstones.v1.json"), JSON.stringify({
+      schemaVersion: "benchmark-holdout-tombstones.v1",
+      entries: [{
+        artifactSha256: digest(holdoutPath), status: "contaminated", eventId: "fixture-inspection",
+        reason: "Fixture identities were inspected.", replacement: "Create a fresh fixture holdout."
+      }]
+    }));
+    const contaminated = loadBenchmarkCampaign(fixture.manifest);
+    expect(contaminated.holdoutSafety.status).toBe("contaminated");
+    expect(contaminated.fingerprint).not.toBe(sealed.fingerprint);
+    expect(() => assertStageDoesNotOpenHoldout(contaminated, "holdout")).toThrow("contaminated");
+  });
+
   it("invalidates only cache layers downstream of a changed dependency", () => {
     const base = cacheInput();
     const first = derivePipelineCacheKeys(base);

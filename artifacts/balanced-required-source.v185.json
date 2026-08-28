@@ -1,0 +1,450 @@
+{
+  "schemaVersion": "balanced-required-source-evaluation.v1",
+  "status": "completed_baseline",
+  "promotionEligible": false,
+  "cohortId": "kairn-v02c-balanced-required-source-20260828",
+  "modelId": "v185-pairwise-reviewed-negatives",
+  "inputs": {
+    "cohortSha256": "72d46f94a0661d700505369e7a89ae5ae451d2c9b2ff214cbce2349bdff127be",
+    "candidateManifestSha256": "8d3a1a6b80eeccf880bfc215628b7b7e3d21889c1feb47573e14673cc42047a7",
+    "candidateReportSha256": "b311ff0b74a6cf7186a24dd8f4a9197abb1f3f14a9c7a75070684a116c9c00f2",
+    "baselineModelSha256": "ee84440d1bd18ccd0dbca732d8b0b6b49000fb4448c64857c7fd7befa3081011"
+  },
+  "validation": {
+    "valid": true,
+    "exactCellCoverage": true,
+    "deterministicSelectionVerified": true,
+    "calibrationOnly": true,
+    "holdoutAccessed": false,
+    "allRequiredFilesInBoundedPool": true,
+    "limitations": [
+      "The v185 artifact existed and case ranks were inspectable during cohort construction. The deterministic selection rule does not use ranks, but this remains retrospective development evidence.",
+      "These calibration lineages contributed to model development and are not an independent holdout.",
+      "A fresh sealed lineage-disjoint holdout followed by quality-passing live-agent runs."
+    ]
+  },
+  "metrics": {
+    "cases": 15,
+    "requiredFiles": 22,
+    "strictFullRecallAt64": {
+      "numerator": 15,
+      "denominator": 15,
+      "value": 1
+    },
+    "strictFullRecallAt128": {
+      "numerator": 15,
+      "denominator": 15,
+      "value": 1
+    },
+    "requiredFileRecallAt1": {
+      "numerator": 7,
+      "denominator": 22,
+      "value": 0.3181818181818182
+    },
+    "requiredFileRecallAt5": {
+      "numerator": 15,
+      "denominator": 22,
+      "value": 0.6818181818181818
+    },
+    "requiredFileRecallAt64": {
+      "numerator": 22,
+      "denominator": 22,
+      "value": 1
+    },
+    "requiredFileRecallAt128": {
+      "numerator": 22,
+      "denominator": 22,
+      "value": 1
+    },
+    "mrr": {
+      "numerator": 10.548469416140774,
+      "denominator": 22,
+      "value": 0.47947588255185336
+    },
+    "medianRequiredFileRank": 2.5,
+    "calibrationEce": 0.031721474342649304,
+    "generatedVendorTopOneViolations": [],
+    "perLanguage": {
+      "cpp": {
+        "cases": 3,
+        "requiredFiles": 4,
+        "strictFullRecallAt64": 1,
+        "requiredFileRecallAt5": 0.75,
+        "requiredFileRecallAt64": 1,
+        "mrr": 0.6666666666666666
+      },
+      "go": {
+        "cases": 3,
+        "requiredFiles": 4,
+        "strictFullRecallAt64": 1,
+        "requiredFileRecallAt5": 1,
+        "requiredFileRecallAt64": 1,
+        "mrr": 0.55
+      },
+      "java": {
+        "cases": 3,
+        "requiredFiles": 3,
+        "strictFullRecallAt64": 1,
+        "requiredFileRecallAt5": 1,
+        "requiredFileRecallAt64": 1,
+        "mrr": 0.5111111111111111
+      },
+      "python": {
+        "cases": 3,
+        "requiredFiles": 4,
+        "strictFullRecallAt64": 1,
+        "requiredFileRecallAt5": 0.75,
+        "requiredFileRecallAt64": 1,
+        "mrr": 0.6607142857142857
+      },
+      "typescript": {
+        "cases": 3,
+        "requiredFiles": 7,
+        "strictFullRecallAt64": 1,
+        "requiredFileRecallAt5": 0.2857142857142857,
+        "requiredFileRecallAt64": 1,
+        "mrr": 0.2150874676119474
+      }
+    },
+    "perScenario": {
+      "failure_first": {
+        "cases": 5,
+        "requiredFiles": 5,
+        "strictFullRecallAt64": 1,
+        "requiredFileRecallAt5": 1,
+        "requiredFileRecallAt64": 1,
+        "mrr": 0.6666666666666667
+      },
+      "long_session": {
+        "cases": 5,
+        "requiredFiles": 12,
+        "strictFullRecallAt64": 1,
+        "requiredFileRecallAt5": 0.4166666666666667,
+        "requiredFileRecallAt64": 1,
+        "mrr": 0.28876134023395345
+      },
+      "source_localization": {
+        "cases": 5,
+        "requiredFiles": 5,
+        "strictFullRecallAt64": 1,
+        "requiredFileRecallAt5": 1,
+        "requiredFileRecallAt64": 1,
+        "mrr": 0.75
+      }
+    }
+  },
+  "diagnosis": {
+    "dominantFailureMechanism": "none_at_recall64",
+    "boundedPoolMisses": [],
+    "servedTop64Misses": [],
+    "remainingTopFiveMisses": [
+      {
+        "caseId": "v02c-calibration-python-long_session-097",
+        "paths": [
+          "seaborn/utils.py"
+        ]
+      },
+      {
+        "caseId": "v02c-calibration-typescript-long_session-106",
+        "paths": [
+          "src/components/structures/RoomSearch.tsx",
+          "src/components/structures/RoomView.tsx",
+          "src/components/views/rooms/EditMessageComposer.js",
+          "src/components/views/rooms/RoomSublist.tsx",
+          "src/components/views/rooms/SendMessageComposer.js"
+        ]
+      },
+      {
+        "caseId": "v02c-calibration-cpp-long_session-133",
+        "paths": [
+          "include/fmt/std.h"
+        ]
+      }
+    ]
+  },
+  "stoppingDecision": {
+    "rankingExperimentAuthorized": false,
+    "experimentsUsed": 0,
+    "experimentsRemaining": 0,
+    "decision": "freeze_ranking",
+    "reason": "v185 already recalls every reviewed required file within 64 on this cohort, leaving no room for the preregistered +5 percentage-point Recall@64 gain. Further ranking iteration would violate the stopping discipline.",
+    "qualifyingGain": {
+      "absoluteRequiredFileRecallAt64": 0.05,
+      "orPairedCiLowerBoundAboveZero": true
+    }
+  },
+  "cases": [
+    {
+      "id": "v02c-calibration-python-source_localization-091",
+      "language": "python",
+      "scenario": "source_localization",
+      "requiredFileRanks": {
+        "xarray/core/combine.py": 1
+      },
+      "requiredFilesAt1": 1,
+      "requiredFilesAt5": 1,
+      "requiredFilesAt64": 1,
+      "requiredFilesAt128": 1,
+      "strictFullRecallAt64": true,
+      "strictFullRecallAt128": true,
+      "generatedVendorTopOne": false,
+      "topFiveMisses": [],
+      "top64Misses": []
+    },
+    {
+      "id": "v02c-calibration-python-failure_first-094",
+      "language": "python",
+      "scenario": "failure_first",
+      "requiredFileRanks": {
+        "seaborn/_core/plot.py": 2
+      },
+      "requiredFilesAt1": 0,
+      "requiredFilesAt5": 1,
+      "requiredFilesAt64": 1,
+      "requiredFilesAt128": 1,
+      "strictFullRecallAt64": true,
+      "strictFullRecallAt128": true,
+      "generatedVendorTopOne": false,
+      "topFiveMisses": [],
+      "top64Misses": []
+    },
+    {
+      "id": "v02c-calibration-python-long_session-097",
+      "language": "python",
+      "scenario": "long_session",
+      "requiredFileRanks": {
+        "seaborn/_core/scales.py": 1,
+        "seaborn/utils.py": 7
+      },
+      "requiredFilesAt1": 1,
+      "requiredFilesAt5": 1,
+      "requiredFilesAt64": 2,
+      "requiredFilesAt128": 2,
+      "strictFullRecallAt64": true,
+      "strictFullRecallAt128": true,
+      "generatedVendorTopOne": false,
+      "topFiveMisses": [
+        "seaborn/utils.py"
+      ],
+      "top64Misses": []
+    },
+    {
+      "id": "v02c-calibration-typescript-source_localization-100",
+      "language": "typescript",
+      "scenario": "source_localization",
+      "requiredFileRanks": {
+        "packages/babel-traverse/src/scope/lib/renamer.ts": 4
+      },
+      "requiredFilesAt1": 0,
+      "requiredFilesAt5": 1,
+      "requiredFilesAt64": 1,
+      "requiredFilesAt128": 1,
+      "strictFullRecallAt64": true,
+      "strictFullRecallAt128": true,
+      "generatedVendorTopOne": false,
+      "topFiveMisses": [],
+      "top64Misses": []
+    },
+    {
+      "id": "v02c-calibration-typescript-failure_first-103",
+      "language": "typescript",
+      "scenario": "failure_first",
+      "requiredFileRanks": {
+        "packages/babel-parser/src/parser/expression.js": 1
+      },
+      "requiredFilesAt1": 1,
+      "requiredFilesAt5": 1,
+      "requiredFilesAt64": 1,
+      "requiredFilesAt128": 1,
+      "strictFullRecallAt64": true,
+      "strictFullRecallAt128": true,
+      "generatedVendorTopOne": false,
+      "topFiveMisses": [],
+      "top64Misses": []
+    },
+    {
+      "id": "v02c-calibration-typescript-long_session-106",
+      "language": "typescript",
+      "scenario": "long_session",
+      "requiredFileRanks": {
+        "src/components/structures/RoomSearch.tsx": 19,
+        "src/components/structures/RoomView.tsx": 16,
+        "src/components/views/rooms/EditMessageComposer.js": 43,
+        "src/components/views/rooms/RoomSublist.tsx": 11,
+        "src/components/views/rooms/SendMessageComposer.js": 38
+      },
+      "requiredFilesAt1": 0,
+      "requiredFilesAt5": 0,
+      "requiredFilesAt64": 5,
+      "requiredFilesAt128": 5,
+      "strictFullRecallAt64": true,
+      "strictFullRecallAt128": true,
+      "generatedVendorTopOne": false,
+      "topFiveMisses": [
+        "src/components/structures/RoomSearch.tsx",
+        "src/components/structures/RoomView.tsx",
+        "src/components/views/rooms/EditMessageComposer.js",
+        "src/components/views/rooms/RoomSublist.tsx",
+        "src/components/views/rooms/SendMessageComposer.js"
+      ],
+      "top64Misses": []
+    },
+    {
+      "id": "v02c-calibration-go-source_localization-109",
+      "language": "go",
+      "scenario": "source_localization",
+      "requiredFileRanks": {
+        "routergroup.go": 2
+      },
+      "requiredFilesAt1": 0,
+      "requiredFilesAt5": 1,
+      "requiredFilesAt64": 1,
+      "requiredFilesAt128": 1,
+      "strictFullRecallAt64": true,
+      "strictFullRecallAt128": true,
+      "generatedVendorTopOne": false,
+      "topFiveMisses": [],
+      "top64Misses": []
+    },
+    {
+      "id": "v02c-calibration-go-failure_first-112",
+      "language": "go",
+      "scenario": "failure_first",
+      "requiredFileRanks": {
+        "logger.go": 2
+      },
+      "requiredFilesAt1": 0,
+      "requiredFilesAt5": 1,
+      "requiredFilesAt64": 1,
+      "requiredFilesAt128": 1,
+      "strictFullRecallAt64": true,
+      "strictFullRecallAt128": true,
+      "generatedVendorTopOne": false,
+      "topFiveMisses": [],
+      "top64Misses": []
+    },
+    {
+      "id": "v02c-calibration-go-long_session-115",
+      "language": "go",
+      "scenario": "long_session",
+      "requiredFileRanks": {
+        "binding/binding.go": 5,
+        "context.go": 1
+      },
+      "requiredFilesAt1": 1,
+      "requiredFilesAt5": 2,
+      "requiredFilesAt64": 2,
+      "requiredFilesAt128": 2,
+      "strictFullRecallAt64": true,
+      "strictFullRecallAt128": true,
+      "generatedVendorTopOne": false,
+      "topFiveMisses": [],
+      "top64Misses": []
+    },
+    {
+      "id": "v02c-calibration-java-source_localization-118",
+      "language": "java",
+      "scenario": "source_localization",
+      "requiredFileRanks": {
+        "src/main/java/com/fasterxml/jackson/core/util/TextBuffer.java": 1
+      },
+      "requiredFilesAt1": 1,
+      "requiredFilesAt5": 1,
+      "requiredFilesAt64": 1,
+      "requiredFilesAt128": 1,
+      "strictFullRecallAt64": true,
+      "strictFullRecallAt128": true,
+      "generatedVendorTopOne": false,
+      "topFiveMisses": [],
+      "top64Misses": []
+    },
+    {
+      "id": "v02c-calibration-java-failure_first-121",
+      "language": "java",
+      "scenario": "failure_first",
+      "requiredFileRanks": {
+        "src/main/java/com/fasterxml/jackson/core/filter/FilteringGeneratorDelegate.java": 3
+      },
+      "requiredFilesAt1": 0,
+      "requiredFilesAt5": 1,
+      "requiredFilesAt64": 1,
+      "requiredFilesAt128": 1,
+      "strictFullRecallAt64": true,
+      "strictFullRecallAt128": true,
+      "generatedVendorTopOne": false,
+      "topFiveMisses": [],
+      "top64Misses": []
+    },
+    {
+      "id": "v02c-calibration-java-long_session-124",
+      "language": "java",
+      "scenario": "long_session",
+      "requiredFileRanks": {
+        "src/main/java/com/fasterxml/jackson/core/io/NumberInput.java": 5
+      },
+      "requiredFilesAt1": 0,
+      "requiredFilesAt5": 1,
+      "requiredFilesAt64": 1,
+      "requiredFilesAt128": 1,
+      "strictFullRecallAt64": true,
+      "strictFullRecallAt128": true,
+      "generatedVendorTopOne": false,
+      "topFiveMisses": [],
+      "top64Misses": []
+    },
+    {
+      "id": "v02c-calibration-cpp-source_localization-127",
+      "language": "cpp",
+      "scenario": "source_localization",
+      "requiredFileRanks": {
+        "include/fmt/chrono.h": 1
+      },
+      "requiredFilesAt1": 1,
+      "requiredFilesAt5": 1,
+      "requiredFilesAt64": 1,
+      "requiredFilesAt128": 1,
+      "strictFullRecallAt64": true,
+      "strictFullRecallAt128": true,
+      "generatedVendorTopOne": false,
+      "topFiveMisses": [],
+      "top64Misses": []
+    },
+    {
+      "id": "v02c-calibration-cpp-failure_first-130",
+      "language": "cpp",
+      "scenario": "failure_first",
+      "requiredFileRanks": {
+        "include/fmt/base.h": 1
+      },
+      "requiredFilesAt1": 1,
+      "requiredFilesAt5": 1,
+      "requiredFilesAt64": 1,
+      "requiredFilesAt128": 1,
+      "strictFullRecallAt64": true,
+      "strictFullRecallAt128": true,
+      "generatedVendorTopOne": false,
+      "topFiveMisses": [],
+      "top64Misses": []
+    },
+    {
+      "id": "v02c-calibration-cpp-long_session-133",
+      "language": "cpp",
+      "scenario": "long_session",
+      "requiredFileRanks": {
+        "include/fmt/format.h": 2,
+        "include/fmt/std.h": 6
+      },
+      "requiredFilesAt1": 0,
+      "requiredFilesAt5": 1,
+      "requiredFilesAt64": 2,
+      "requiredFilesAt128": 2,
+      "strictFullRecallAt64": true,
+      "strictFullRecallAt128": true,
+      "generatedVendorTopOne": false,
+      "topFiveMisses": [
+        "include/fmt/std.h"
+      ],
+      "top64Misses": []
+    }
+  ]
+}

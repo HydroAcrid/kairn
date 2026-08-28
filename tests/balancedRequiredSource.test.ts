@@ -7,10 +7,11 @@ import { describe, expect, it } from "vitest";
 import { evaluateBalancedRequiredSource, formatBalancedRequiredSourceMarkdown } from "../src/bench/balancedRequiredSource.js";
 
 const cohortPath = "benchmarks/cohorts/v02c-balanced-required-source.v1.json";
+const frozenEvaluation = evaluateBalancedRequiredSource({ cohortPath });
 
 describe("balanced required-source stopping discipline", () => {
   it("evaluates exactly one frozen calibration case per language/scenario cell", () => {
-    const value = evaluateBalancedRequiredSource({ cohortPath });
+    const value = frozenEvaluation;
     expect(value.validation).toMatchObject({
       valid: true,
       exactCellCoverage: true,
@@ -25,7 +26,7 @@ describe("balanced required-source stopping discipline", () => {
   });
 
   it("reproduces the frozen v185 ranks and stops when Recall@64 is at the ceiling", () => {
-    const value = evaluateBalancedRequiredSource({ cohortPath });
+    const value = frozenEvaluation;
     expect(value.metrics.requiredFileRecallAt5).toMatchObject({ numerator: 15, denominator: 22 });
     expect(value.metrics.requiredFileRecallAt64).toMatchObject({ numerator: 22, denominator: 22, value: 1 });
     expect(value.metrics.strictFullRecallAt64).toMatchObject({ numerator: 15, denominator: 15, value: 1 });
@@ -36,7 +37,7 @@ describe("balanced required-source stopping discipline", () => {
   });
 
   it("is byte-stable and labels its evidence boundary in Markdown", () => {
-    const first = evaluateBalancedRequiredSource({ cohortPath });
+    const first = frozenEvaluation;
     const second = evaluateBalancedRequiredSource({ cohortPath });
     expect(second).toEqual(first);
     expect(formatBalancedRequiredSourceMarkdown(first)).toContain("retrospective development evidence");

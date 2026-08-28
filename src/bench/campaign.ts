@@ -128,7 +128,8 @@ export function loadBenchmarkCampaign(manifestPath: string, options?: { verifyAr
     campaign,
     manifestSha256: infraSha256(bytes),
     artifacts: resolvedArtifacts.map(({ id, actualSha256 }) => ({ id, sha256: actualSha256 })),
-    caseIds
+    caseIds,
+    holdoutSafety
   };
   return {
     campaign,

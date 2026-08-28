@@ -1,0 +1,81 @@
+{
+  "schemaVersion": "benchmark-checkpoint.v1",
+  "checkpointId": "v02c-balanced-required-source-39667a4",
+  "recordedAt": "2026-08-28",
+  "branch": "codex/v0.2c-balanced-required-source",
+  "sourceCommit": "39667a4a1a1e07ebbb8f245eab518701235905cf",
+  "campaign": "benchmarks/campaigns/v02c-balanced-required-source.json",
+  "cohort": {
+    "path": "benchmarks/cohorts/v02c-balanced-required-source.v1.json",
+    "sha256": "72d46f94a0661d700505369e7a89ae5ae451d2c9b2ff214cbce2349bdff127be",
+    "cases": 15,
+    "requiredExistingFiles": 22,
+    "cells": 15,
+    "selection": "lexicographically first calibration case per language/scenario cell",
+    "developmentOnly": true,
+    "limitations": [
+      "The model was developed on these calibration lineages.",
+      "The selection rule is rank-independent, but v185 ranks were inspectable during construction.",
+      "This result cannot support a public effectiveness or token-reduction claim."
+    ]
+  },
+  "infrastructure": {
+    "valid": true,
+    "node": "24.18.0",
+    "pnpm": "10.31.0",
+    "python": "3.12.13",
+    "semanticModel": "jina-code-v2-q8",
+    "cacheRetained": "4.1 KiB / 8.00 GiB",
+    "report": {
+      "path": "artifacts/balanced-required-source.infrastructure.json",
+      "sha256": "83eae1d0ce980d84b85a3ddece2eeba76773017f2c23f94c85e376304ad69461"
+    }
+  },
+  "baseline": {
+    "modelId": "v185-pairwise-reviewed-negatives",
+    "evaluation": {
+      "path": "artifacts/balanced-required-source.v185.json",
+      "sha256": "2e53689da0ea3fe3e100d37c55bf4b98bb952e1ef0626fba09c419f3269d413a"
+    },
+    "markdown": {
+      "path": "artifacts/balanced-required-source.v185.md",
+      "sha256": "626255be23c34eb8e621748b028ca656b3bacbf760d9edf8b2a687beeccb6153"
+    },
+    "metrics": {
+      "strictFullRecallAt64": { "numerator": 15, "denominator": 15, "value": 1.0 },
+      "strictFullRecallAt128": { "numerator": 15, "denominator": 15, "value": 1.0 },
+      "requiredFileRecallAt5": { "numerator": 15, "denominator": 22, "value": 0.6818181818181818 },
+      "requiredFileRecallAt64": { "numerator": 22, "denominator": 22, "value": 1.0 },
+      "requiredFileRecallAt128": { "numerator": 22, "denominator": 22, "value": 1.0 },
+      "mrr": 0.47947588255185336,
+      "expectedCalibrationError": 0.031721474342649304,
+      "generatedVendorTopOneViolations": 0
+    },
+    "topFiveObservation": {
+      "sourceLocalizationRecall": 1.0,
+      "failureFirstRecall": 1.0,
+      "longSessionRecall": 0.4166666666666667,
+      "typescriptRecall": 0.2857142857142857
+    }
+  },
+  "stoppingDecision": {
+    "decision": "freeze_ranking",
+    "mechanismExperimentsUsed": 0,
+    "mechanismExperimentsRemaining": 0,
+    "reason": "v185 is already at 100% required-file Recall@64 on the balanced development cohort, so the preregistered +5 percentage-point improvement cannot be achieved. Running another ranking experiment would violate the stopping discipline.",
+    "nextProductWork": [
+      "Beta-user installation and onboarding reliability.",
+      "User-facing local savings and quality reporting.",
+      "Quality-gated provider-observed token and verification evidence.",
+      "A replacement sealed holdout from fresh repository lineages before any public effectiveness claim."
+    ]
+  },
+  "holdout": {
+    "status": "contaminated_do_not_use",
+    "eventId": "development-inspection-20260828",
+    "tombstone": "benchmarks/holdout-tombstones.v1.json",
+    "accessedByThisRun": false,
+    "replacementRequired": true
+  },
+  "paidProviderCalls": 0
+}
