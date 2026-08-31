@@ -14,7 +14,6 @@ import type {
   ExperimentTask
 } from "../types.js";
 import { sha256 } from "../utils/hash.js";
-import { estimateTokens } from "../utils/tokens.js";
 import { enableKairn, planKairnEnable } from "../cli/setup/enable.js";
 import { KairnRuntime } from "../runtime/KairnRuntime.js";
 import { getSemanticModelState } from "../semantic/modelManager.js";
@@ -32,6 +31,7 @@ import {
   transcriptFirstMention,
   type TimedCodexEvent
 } from "./codexPilotUsage.js";
+import type { HookAuditRecord } from "../watch/hookAudit.js";
 
 export type RunCodexPilotOptions = {
   planPath: string;
@@ -240,6 +240,8 @@ async function runLiveAttempt(input: {
   const startedMs = Date.now();
   const workspace = path.join(input.outDir, "workspaces", input.attempt.id);
   const rawDir = path.join(input.outDir, "raw", input.attempt.id);
+  let cleanupKairn = () => {};
+  let cleanupCodexTrust = () => {};
   try {
     if (fs.existsSync(workspace)) fs.rmSync(workspace, { recursive: true, force: true });
     if (fs.existsSync(rawDir)) fs.rmSync(rawDir, { recursive: true, force: true });
@@ -257,10 +259,11 @@ async function runLiveAttempt(input: {
       : undefined;
     if (initialFailure && initialFailure.status === 0) throw new Error("failure_first precondition unexpectedly passed");
 
-    let cleanupKairn = () => {};
     if (input.attempt.condition === "codex_kairn") cleanupKairn = await configureKairn(workspace, input.plan);
     else assertVanillaHasNoKairnConfig(workspace);
+    cleanupCodexTrust = configureCodexProjectTrust(input.codexHome, workspace);
     const tracePrefix = path.join(rawDir, "strace");
+    const hookAuditPath = path.join(rawDir, "kairn-hook-audit.jsonl");
     const turns = taskPrompts(input.task, initialFailure?.output);
     const captured: CapturedTurn[] = [];
     let threadId: string | undefined;
@@ -274,6 +277,7 @@ async function runLiveAttempt(input: {
         turn,
         timeoutMs: input.plan.timeoutMs,
         tracePath: `${tracePrefix}.t${turn}`,
+        hookAuditPath,
         threadId
       });
       captured.push(result);
@@ -284,9 +288,13 @@ async function runLiveAttempt(input: {
       if (turn < turns.length && !threadId) break;
     }
     cleanupKairn();
+    cleanupKairn = () => {};
+    cleanupCodexTrust();
+    cleanupCodexTrust = () => {};
 
     const allEvents = captured.flatMap((turn) => turn.events);
     const transcript = captured.map((turn) => turn.stdout).join("\n");
+    const hookEvidence = inspectCodexPilotHookEvidence(rawDir, hookAuditPath);
     const syscallAccesses = collectSyscallAccesses(rawDir, workspace);
     const changedFiles = changedRepositoryFiles(workspace);
     const fileAccesses = markRepeatedReads(syscallAccesses, changedFiles);
@@ -319,15 +327,31 @@ async function runLiveAttempt(input: {
     const extraneousFilesOpened = uniquePaths(
       fileAccesses.filter((access) => access.operation === "read" && !allowed.has(normalizePath(access.path))).map((access) => access.path)
     ).length;
+    const hookIntegrityPassed = input.attempt.condition === "codex_kairn"
+      ? hookEvidence.traceInvocationCount === turns.length &&
+        hookEvidence.auditRecordsValid &&
+        hookEvidence.auditRecordCount === turns.length
+      : hookEvidence.traceInvocationCount === 0 && hookEvidence.auditRecordCount === 0;
     const traceValid = captured.length === turns.length &&
       captured.every((turn) => turn.status === 0 && !turn.timedOut) &&
       usage.totalTokens > 0 &&
-      syscallAccesses.length > 0;
+      syscallAccesses.length > 0 &&
+      hookIntegrityPassed;
     const invalidReasons = [
       ...(captured.length !== turns.length ? ["incomplete_turn_sequence"] : []),
       ...(captured.some((turn) => turn.status !== 0 || turn.timedOut) ? ["codex_process_failure"] : []),
       ...(usage.totalTokens === 0 ? ["missing_observed_token_usage"] : []),
-      ...(syscallAccesses.length === 0 ? ["missing_syscall_trace"] : [])
+      ...(syscallAccesses.length === 0 ? ["missing_syscall_trace"] : []),
+      ...(!hookEvidence.auditRecordsValid ? ["invalid_kairn_hook_audit"] : []),
+      ...(input.attempt.condition === "codex_kairn" && hookEvidence.traceInvocationCount !== turns.length
+        ? [hookEvidence.traceInvocationCount === 0 ? "missing_kairn_hook_invocation" : "unexpected_kairn_hook_invocation_count"]
+        : []),
+      ...(input.attempt.condition === "codex_kairn" && hookEvidence.auditRecordCount !== turns.length
+        ? [hookEvidence.auditRecordCount === 0 ? "missing_kairn_hook_audit" : "unexpected_kairn_hook_audit_count"]
+        : []),
+      ...(input.attempt.condition === "vanilla_codex" && (hookEvidence.traceInvocationCount > 0 || hookEvidence.auditRecordCount > 0)
+        ? ["vanilla_kairn_contamination"]
+        : [])
     ];
     const verificationPassed = verification.status === 0 && !verification.timedOut;
     const qualityGatePassed = verificationPassed && requiredTouchedPassed && invariant.passed && diffScope.passed;
@@ -354,7 +378,9 @@ async function runLiveAttempt(input: {
       explicitNoiseFilesOpened,
       extraneousFilesOpened,
       repeatedUnchangedReadEvents: fileAccesses.filter((access) => access.unchangedRepeat).length,
-      kairnPayloadTokens: input.attempt.condition === "codex_kairn" ? estimateKairnPayloadTokens(transcript) : 0,
+      kairnHookInvocationCount: hookEvidence.traceInvocationCount,
+      kairnHookAuditCount: hookEvidence.auditRecordCount,
+      kairnPayloadTokens: input.attempt.condition === "codex_kairn" ? hookEvidence.estimatedPayloadTokens : 0,
       ...(firstMention ? { timeToFirstRequiredPathMs: Math.max(0, firstMention.receivedMs - startedMs) } : {}),
       ...(firstAccess ? { timeToFirstRequiredContentMs: Math.max(0, firstAccess.timestampMs - startedMs) } : {}),
       ...(firstPathTurn ? { tokensBeforeFirstRequiredPath: usageBeforeTurn(usageByTurn, firstPathTurn) } : {}),
@@ -383,6 +409,8 @@ async function runLiveAttempt(input: {
       explicitNoiseFilesOpened: 0,
       extraneousFilesOpened: 0,
       repeatedUnchangedReadEvents: 0,
+      kairnHookInvocationCount: 0,
+      kairnHookAuditCount: 0,
       kairnPayloadTokens: 0,
       verificationPassed: false,
       requiredTouchedPassed: false,
@@ -391,6 +419,9 @@ async function runLiveAttempt(input: {
       qualityGatePassed: false,
       error: error instanceof Error ? error.message : String(error)
     };
+  } finally {
+    cleanupKairn();
+    cleanupCodexTrust();
   }
 }
 
@@ -454,6 +485,25 @@ function assertVanillaHasNoKairnConfig(workspace: string): void {
   }
 }
 
+function configureCodexProjectTrust(codexHome: string, workspace: string): () => void {
+  fs.mkdirSync(codexHome, { recursive: true, mode: 0o700 });
+  const target = path.join(codexHome, "config.toml");
+  const existed = fs.existsSync(target);
+  const previous = existed ? fs.readFileSync(target) : undefined;
+  const temporary = `${target}.kairn-pilot-${process.pid}`;
+  fs.writeFileSync(temporary, codexPilotProjectTrustConfig(workspace), { encoding: "utf8", mode: 0o600 });
+  fs.renameSync(temporary, target);
+  return () => {
+    fs.rmSync(temporary, { force: true });
+    if (existed && previous) fs.writeFileSync(target, previous, { mode: 0o600 });
+    else fs.rmSync(target, { force: true });
+  };
+}
+
+export function codexPilotProjectTrustConfig(workspace: string): string {
+  return `[projects.${JSON.stringify(path.resolve(workspace))}]\ntrust_level = "trusted"\n`;
+}
+
 async function runCodexTurn(input: {
   command: string;
   home: string;
@@ -462,13 +512,29 @@ async function runCodexTurn(input: {
   turn: number;
   timeoutMs: number;
   tracePath: string;
+  hookAuditPath: string;
   threadId?: string | undefined;
 }): Promise<CapturedTurn> {
   fs.mkdirSync(input.home, { recursive: true });
-  const common = [
+  const common = buildCodexPilotCommonArgs();
+  const codexArgs = input.threadId
+    ? ["exec", "resume", ...common, input.threadId, input.prompt]
+    : ["exec", ...common, "--sandbox", "workspace-write", input.prompt];
+  const args = ["-ff", "-ttt", "-e", "trace=openat,openat2,execve", "-o", input.tracePath, input.command, ...codexArgs];
+  const result = await captureProcess("strace", args, {
+    cwd: input.workspace,
+    timeoutMs: input.timeoutMs,
+    env: sanitizedCodexEnvironment(input.home, input.hookAuditPath),
+    turn: input.turn
+  });
+  const threadId = codexThreadId(result.events);
+  return { ...result, ...(threadId ? { threadId } : {}) };
+}
+
+export function buildCodexPilotCommonArgs(): string[] {
+  return [
     "--json",
     "--strict-config",
-    "--ignore-user-config",
     "--ignore-rules",
     "--dangerously-bypass-hook-trust",
     "--model", CODEX_PILOT_PIN.model,
@@ -477,23 +543,13 @@ async function runCodexTurn(input: {
     "--config", `service_tier="${CODEX_PILOT_PIN.serviceTier}"`,
     "--config", "features.fast_mode=false"
   ];
-  const codexArgs = input.threadId
-    ? ["exec", "resume", ...common, input.threadId, input.prompt]
-    : ["exec", ...common, "--sandbox", "workspace-write", input.prompt];
-  const args = ["-ff", "-ttt", "-e", "trace=openat,openat2,execve", "-o", input.tracePath, input.command, ...codexArgs];
-  const result = await captureProcess("strace", args, {
-    cwd: input.workspace,
-    timeoutMs: input.timeoutMs,
-    env: sanitizedCodexEnvironment(input.home),
-    turn: input.turn
-  });
-  const threadId = codexThreadId(result.events);
-  return { ...result, ...(threadId ? { threadId } : {}) };
 }
 
-function sanitizedCodexEnvironment(codexHome: string): NodeJS.ProcessEnv {
+function sanitizedCodexEnvironment(codexHome: string, hookAuditPath?: string): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env, CODEX_HOME: codexHome };
   for (const key of FORBIDDEN_PROVIDER_KEYS) delete env[key];
+  if (hookAuditPath) env.KAIRN_HOOK_AUDIT_PATH = hookAuditPath;
+  else delete env.KAIRN_HOOK_AUDIT_PATH;
   return env;
 }
 
@@ -596,7 +652,7 @@ function collectSyscallAccesses(rawDir: string, workspace: string): SyscallAcces
   const workspaceNormalized = workspace.replace(/\\/g, "/");
   for (const name of fs.readdirSync(rawDir).filter((candidate) => candidate.startsWith("strace.t"))) {
     const content = fs.readFileSync(path.join(rawDir, name), "utf8");
-    if (/execve\([^\n]*(?:\bkairn\b|dist\/cli\.js)[^\n]*\bhook\b/i.test(content)) continue;
+    if (content.split(/\r?\n/).some(isKairnCodexHookExecve)) continue;
     const turn = Number(/strace\.t(\d+)/.exec(name)?.[1] ?? 0);
     for (const line of content.split(/\r?\n/)) {
       const timestampMs = Number(/^\s*(\d+(?:\.\d+)?)/.exec(line)?.[1] ?? 0) * 1000;
@@ -616,6 +672,62 @@ function collectSyscallAccesses(rawDir: string, workspace: string): SyscallAcces
     }
   }
   return output;
+}
+
+export function inspectCodexPilotHookEvidence(rawDir: string, auditPath: string): {
+  traceInvocationCount: number;
+  auditRecordCount: number;
+  auditRecordsValid: boolean;
+  estimatedPayloadTokens: number;
+} {
+  let traceInvocationCount = 0;
+  for (const name of fs.existsSync(rawDir)
+    ? fs.readdirSync(rawDir).filter((candidate) => candidate.startsWith("strace.t"))
+    : []) {
+    const content = fs.readFileSync(path.join(rawDir, name), "utf8");
+    traceInvocationCount += content.split(/\r?\n/).filter(isKairnCodexHookExecve).length;
+  }
+  if (!fs.existsSync(auditPath)) {
+    return { traceInvocationCount, auditRecordCount: 0, auditRecordsValid: true, estimatedPayloadTokens: 0 };
+  }
+  let auditRecordsValid = true;
+  let estimatedPayloadTokens = 0;
+  const records = fs.readFileSync(auditPath, "utf8").split(/\r?\n/).filter(Boolean).flatMap((line) => {
+    try {
+      const value = JSON.parse(line) as Partial<HookAuditRecord>;
+      if (
+        value.schemaVersion !== "kairn-hook-audit.v1" ||
+        value.source !== "codex" ||
+        value.eventName !== "UserPromptSubmit" ||
+        typeof value.estimatedPayloadTokens !== "number" ||
+        !Number.isSafeInteger(value.estimatedPayloadTokens) ||
+        value.estimatedPayloadTokens < 0 ||
+        typeof value.payloadSha256 !== "string" ||
+        !/^[a-f0-9]{64}$/.test(value.payloadSha256)
+      ) {
+        auditRecordsValid = false;
+        return [];
+      }
+      estimatedPayloadTokens += value.estimatedPayloadTokens;
+      return [value];
+    } catch {
+      auditRecordsValid = false;
+      return [];
+    }
+  });
+  return {
+    traceInvocationCount,
+    auditRecordCount: records.length,
+    auditRecordsValid,
+    estimatedPayloadTokens
+  };
+}
+
+function isKairnCodexHookExecve(line: string): boolean {
+  return /\bexecve\(/.test(line) &&
+    /(?:^|,\s*)"hook"(?:,|\])/.test(line) &&
+    /(?:^|,\s*)"--source"(?:,|\])/.test(line) &&
+    /(?:^|,\s*)"codex"(?:,|\])/.test(line);
 }
 
 function markRepeatedReads(accesses: SyscallAccess[], changedFiles: string[]): CodexPilotFileAccess[] {
@@ -728,6 +840,8 @@ function plannedAttempt(attempt: CodexPilotAttemptPlan, task: ExperimentTask): C
     explicitNoiseFilesOpened: 0,
     extraneousFilesOpened: 0,
     repeatedUnchangedReadEvents: 0,
+    kairnHookInvocationCount: 0,
+    kairnHookAuditCount: 0,
     kairnPayloadTokens: 0,
     verificationPassed: false,
     requiredTouchedPassed: false,
@@ -785,6 +899,8 @@ function fakeAttempt(
     explicitNoiseFilesOpened: typeof row.explicitNoiseFilesOpened === "number" ? row.explicitNoiseFilesOpened : 0,
     extraneousFilesOpened: typeof row.extraneousFilesOpened === "number" ? row.extraneousFilesOpened : 0,
     repeatedUnchangedReadEvents: typeof row.repeatedUnchangedReadEvents === "number" ? row.repeatedUnchangedReadEvents : 0,
+    kairnHookInvocationCount: typeof row.kairnHookInvocationCount === "number" ? row.kairnHookInvocationCount : 0,
+    kairnHookAuditCount: typeof row.kairnHookAuditCount === "number" ? row.kairnHookAuditCount : 0,
     kairnPayloadTokens: typeof row.kairnPayloadTokens === "number" ? row.kairnPayloadTokens : 0,
     verificationPassed: row.verificationPassed === true,
     requiredTouchedPassed: row.requiredTouchedPassed === true,
@@ -971,6 +1087,8 @@ function buildPublicEvidence(report: CodexPilotReport): Record<string, unknown> 
       explicitNoiseFilesOpened: attempt.explicitNoiseFilesOpened,
       extraneousFilesOpened: attempt.extraneousFilesOpened,
       repeatedUnchangedReadEvents: attempt.repeatedUnchangedReadEvents,
+      kairnHookInvocationCount: attempt.kairnHookInvocationCount,
+      kairnHookAuditCount: attempt.kairnHookAuditCount,
       kairnPayloadTokens: attempt.kairnPayloadTokens,
       invalidReasons: attempt.invalidReasons
     })),
@@ -1042,11 +1160,6 @@ function syscallTraceHash(rawDir: string): string {
     .map((name) => `${name}\n${fs.readFileSync(path.join(rawDir, name), "utf8")}`)
     .join("\n");
   return sha256(value);
-}
-
-function estimateKairnPayloadTokens(transcript: string): number {
-  const lines = transcript.split(/\r?\n/).filter((line) => /\bkairn\b|relevanceProbability|evidenceReasons/i.test(line));
-  return estimateTokens(lines.join("\n"));
 }
 
 function usageBeforeTurn(values: Map<number, CodexPilotUsage>, turn: number): number {

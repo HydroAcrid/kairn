@@ -4,6 +4,7 @@ import { Command, Option } from "commander";
 import { handleHookWithDaemon } from "../../daemon/server.js";
 import type { HookOutputProfile, PrimeProfile, WatchEventSource } from "../../types.js";
 import { hostHookOutput, normalizeHookPayload } from "../../watch/normalizeHook.js";
+import { writeHookAuditRecord } from "../../watch/hookAudit.js";
 import { runRepoWatcher } from "../../watch/watchRepo.js";
 import { printMetrics, printWatchSnapshot } from "../formatters.js";
 import { parsePositiveInt, withRuntime } from "../helpers.js";
@@ -102,6 +103,11 @@ export function registerWatchCommands(program: Command): void {
           eventName: event.eventName,
           content: result.prime?.content ?? result.failureContext?.content ?? result.recommendation?.content,
           json: false
+        });
+        writeHookAuditRecord({
+          source: options.source,
+          eventName: event.eventName,
+          content: output
         });
         if (output) {
           process.stdout.write(`${output}\n`);

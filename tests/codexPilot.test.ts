@@ -4,7 +4,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { runCodexPilot } from "../src/bench/codexPilot.js";
+import {
+  buildCodexPilotCommonArgs,
+  codexPilotProjectTrustConfig,
+  inspectCodexPilotHookEvidence,
+  runCodexPilot
+} from "../src/bench/codexPilot.js";
 import {
   buildCodexPilotSchedule,
   CODEX_PILOT_PIN,
@@ -52,6 +57,56 @@ describe("ecological Codex pilot", () => {
       outputTokens: 30,
       reasoningTokens: 12,
       totalTokens: 150
+    });
+  });
+
+  it("loads only the exact pilot checkout while retaining project hook discovery", () => {
+    const workspace = path.resolve("/tmp/kairn pilot checkout");
+    const args = buildCodexPilotCommonArgs();
+
+    expect(args).not.toContain("--ignore-user-config");
+    expect(args).toContain("--dangerously-bypass-hook-trust");
+    expect(codexPilotProjectTrustConfig(workspace)).toBe(
+      `[projects.${JSON.stringify(workspace)}]\ntrust_level = "trusted"\n`
+    );
+  });
+
+  it("proves Kairn hook execution from both syscall and content-free audit receipts", () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-hook-proof-"));
+    const raw = path.join(temporary, "raw");
+    const audit = path.join(raw, "kairn-hook-audit.jsonl");
+    fs.mkdirSync(raw);
+    fs.writeFileSync(path.join(raw, "strace.t1.123"), [
+      '1.0 execve("/usr/bin/node", ["node", "/opt/kairn/dist/cli.js", "hook", "--source", "codex"], 0x0) = 0',
+      '2.0 openat(AT_FDCWD, "/tmp/projects/kairn/artifacts/not-hook.txt", O_RDONLY) = 3'
+    ].join("\n"));
+    fs.writeFileSync(audit, `${JSON.stringify({
+      schemaVersion: "kairn-hook-audit.v1",
+      source: "codex",
+      eventName: "UserPromptSubmit",
+      emitted: true,
+      estimatedPayloadTokens: 42,
+      payloadSha256: "a".repeat(64)
+    })}\n`);
+
+    expect(inspectCodexPilotHookEvidence(raw, audit)).toEqual({
+      traceInvocationCount: 1,
+      auditRecordCount: 1,
+      auditRecordsValid: true,
+      estimatedPayloadTokens: 42
+    });
+  });
+
+  it("rejects malformed Kairn hook audit receipts", () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-hook-proof-invalid-"));
+    const audit = path.join(temporary, "audit.jsonl");
+    fs.writeFileSync(audit, '{"schemaVersion":"wrong"}\n');
+
+    expect(inspectCodexPilotHookEvidence(temporary, audit)).toMatchObject({
+      traceInvocationCount: 0,
+      auditRecordCount: 0,
+      auditRecordsValid: false,
+      estimatedPayloadTokens: 0
     });
   });
 

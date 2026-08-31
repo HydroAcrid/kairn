@@ -87,6 +87,8 @@ export type CodexPilotAttemptResult = {
   explicitNoiseFilesOpened: number;
   extraneousFilesOpened: number;
   repeatedUnchangedReadEvents: number;
+  kairnHookInvocationCount: number;
+  kairnHookAuditCount: number;
   kairnPayloadTokens: number;
   timeToFirstRequiredPathMs?: number | undefined;
   timeToFirstRequiredContentMs?: number | undefined;

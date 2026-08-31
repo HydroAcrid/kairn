@@ -526,3 +526,21 @@ The first offline end-to-end fixture verified:
   hint; and
 - a broad behavioral query correctly exercised abstention, which remains a
   live-recall risk to measure rather than bypass with a heuristic.
+
+## Live Codex hook-integrity correction
+
+The first subscription-backed Codex pair is excluded from effectiveness
+evidence. Both attempts passed the task verifier, but syscall review proved
+that the Kairn arm never executed its repository hook. Its apparent token
+delta was therefore ordinary run variance, not a Kairn result. The old
+transcript estimate also counted the word `kairn` inside benchmark workspace
+paths and has been removed.
+
+The harness now loads a dedicated Codex config containing trust for only the
+exact disposable checkout. A Kairn attempt is trace-valid only when every turn
+has both an observed `kairn hook --source codex` process and a matching local
+audit receipt. The receipt contains only event identity, emitted/not-emitted,
+an estimated payload token count, and a payload hash; it stores no prompt,
+path, source, or context content. Any Kairn hook in the vanilla arm invalidates
+that attempt as contamination. A zero-work live probe confirmed one hook
+process and one audit receipt before permitting another paid pair.
