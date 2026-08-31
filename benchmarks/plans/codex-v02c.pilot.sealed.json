@@ -39,7 +39,7 @@
       "allowedSupportFiles": ["tests/test_itsdangerous/test_encoding.py"],
       "explicitNoisePatterns": ["README.md", "docs/**", ".github/**"],
       "requiredTouchedFiles": ["src/itsdangerous/encoding.py"],
-      "sourceInvariants": [{ "file": "src/itsdangerous/encoding.py", "requiredPresent": ["string += b\"=\" * (-len(string) % 4)"] }],
+      "sourceInvariants": [{ "file": "src/itsdangerous/encoding.py", "requiredPresent": ["def base64_decode"] }],
       "allowedDiffScopes": [
         { "file": "src/itsdangerous/encoding.py", "allowWholeFile": true },
         { "file": "tests/test_itsdangerous/test_encoding.py", "allowWholeFile": true }
@@ -60,7 +60,7 @@
       "allowedSupportFiles": ["tests/test_converters.py"],
       "explicitNoisePatterns": ["README.md", "docs/**", ".github/**"],
       "requiredTouchedFiles": ["src/attr/converters.py"],
-      "sourceInvariants": [{ "file": "src/attr/converters.py", "requiredPresent": ["val = val.lower()"] }],
+      "sourceInvariants": [{ "file": "src/attr/converters.py", "requiredPresent": ["def to_bool"] }],
       "allowedDiffScopes": [
         { "file": "src/attr/converters.py", "allowWholeFile": true },
         { "file": "tests/test_converters.py", "allowWholeFile": true }
@@ -87,7 +87,7 @@
       "allowedSupportFiles": ["tests/processors/test_renderers.py"],
       "explicitNoisePatterns": ["README.md", "docs/**", ".github/**"],
       "requiredTouchedFiles": ["src/structlog/processors.py"],
-      "sourceInvariants": [{ "file": "src/structlog/processors.py", "requiredPresent": ["if self.bool_as_flag and value:"] }],
+      "sourceInvariants": [{ "file": "src/structlog/processors.py", "requiredPresent": ["class LogfmtRenderer"] }],
       "allowedDiffScopes": [
         { "file": "src/structlog/processors.py", "allowWholeFile": true },
         { "file": "tests/processors/test_renderers.py", "allowWholeFile": true }
@@ -108,7 +108,7 @@
       "allowedSupportFiles": ["test/non-secure.test.js"],
       "explicitNoisePatterns": ["README.md", "docs/**", ".github/**", "test/demo/**"],
       "requiredTouchedFiles": ["non-secure/index.js"],
-      "sourceInvariants": [{ "file": "non-secure/index.js", "requiredPresent": ["Math.random() * 64"] }],
+      "sourceInvariants": [{ "file": "non-secure/index.js", "requiredPresent": ["export let nanoid"] }],
       "allowedDiffScopes": [
         { "file": "non-secure/index.js", "allowWholeFile": true },
         { "file": "test/non-secure.test.js", "allowWholeFile": true }
@@ -129,7 +129,7 @@
       "allowedSupportFiles": ["test.js"],
       "explicitNoisePatterns": ["readme.md", ".github/**", "index.test-d.ts"],
       "requiredTouchedFiles": ["index.js"],
-      "sourceInvariants": [{ "file": "index.js", "requiredPresent": ["if (!this.#head)"] }],
+      "sourceInvariants": [{ "file": "index.js", "requiredPresent": ["dequeue()"] }],
       "allowedDiffScopes": [
         { "file": "index.js", "allowWholeFile": true },
         { "file": "test.js", "allowWholeFile": true }
@@ -156,7 +156,7 @@
       "allowedSupportFiles": ["test/test.js"],
       "explicitNoisePatterns": ["README.md", ".github/**", "test/es6/**"],
       "requiredTouchedFiles": ["index.js"],
-      "sourceInvariants": [{ "file": "index.js", "requiredPresent": ["case 'Uint8ClampedArray': return 'uint8clampedarray';"] }],
+      "sourceInvariants": [{ "file": "index.js", "requiredPresent": ["module.exports = function kindOf"] }],
       "allowedDiffScopes": [
         { "file": "index.js", "allowWholeFile": true },
         { "file": "test/test.js", "allowWholeFile": true }
@@ -177,7 +177,7 @@
       "allowedSupportFiles": ["uuid_test.go"],
       "explicitNoisePatterns": ["README.md", ".github/**", "examples/**"],
       "requiredTouchedFiles": ["util.go"],
-      "sourceInvariants": [{ "file": "util.go", "requiredPresent": ["b1 != 255 && b2 != 255"] }],
+      "sourceInvariants": [{ "file": "util.go", "requiredPresent": ["func xtob"] }],
       "allowedDiffScopes": [
         { "file": "util.go", "allowWholeFile": true },
         { "file": "uuid_test.go", "allowWholeFile": true }
@@ -198,7 +198,7 @@
       "allowedSupportFiles": ["middleware/clean_path_test.go"],
       "explicitNoisePatterns": ["README.md", "docs/**", ".github/**", "_examples/**"],
       "requiredTouchedFiles": ["middleware/clean_path.go"],
-      "sourceInvariants": [{ "file": "middleware/clean_path.go", "requiredPresent": ["rctx.RoutePath = path.Clean(routePath)"] }],
+      "sourceInvariants": [{ "file": "middleware/clean_path.go", "requiredPresent": ["func CleanPath"] }],
       "allowedDiffScopes": [
         { "file": "middleware/clean_path.go", "allowWholeFile": true },
         { "file": "middleware/clean_path_test.go", "allowWholeFile": true }
@@ -225,7 +225,7 @@
       "allowedSupportFiles": ["errors_test.go"],
       "explicitNoisePatterns": ["README.md", ".github/**", "example_test.go"],
       "requiredTouchedFiles": ["errors.go"],
-      "sourceInvariants": [{ "file": "errors.go", "requiredPresent": ["if err == nil"] }],
+      "sourceInvariants": [{ "file": "errors.go", "requiredPresent": ["func WithMessage"] }],
       "allowedDiffScopes": [
         { "file": "errors.go", "allowWholeFile": true },
         { "file": "errors_test.go", "allowWholeFile": true }
@@ -246,7 +246,7 @@
       "allowedSupportFiles": ["src/test/java/org/json/junit/JSONPointerTest.java"],
       "explicitNoisePatterns": ["README.md", "docs/**", ".github/**", "src/test/resources/**"],
       "requiredTouchedFiles": ["src/main/java/org/json/JSONPointer.java"],
-      "sourceInvariants": [{ "file": "src/main/java/org/json/JSONPointer.java", "requiredPresent": ["return token.replace(\"~\", \"~0\")", ".replace(\"/\", \"~1\")"] }],
+      "sourceInvariants": [{ "file": "src/main/java/org/json/JSONPointer.java", "requiredPresent": ["private static String escape"] }],
       "allowedDiffScopes": [
         { "file": "src/main/java/org/json/JSONPointer.java", "allowWholeFile": true },
         { "file": "src/test/java/org/json/junit/JSONPointerTest.java", "allowWholeFile": true }
@@ -267,7 +267,7 @@
       "allowedSupportFiles": ["src/test/java/com/thealgorithms/maths/ParseIntegerTest.java"],
       "explicitNoisePatterns": ["README.md", "docs/**", ".github/**"],
       "requiredTouchedFiles": ["src/main/java/com/thealgorithms/maths/ParseInteger.java"],
-      "sourceInvariants": [{ "file": "src/main/java/com/thealgorithms/maths/ParseInteger.java", "requiredPresent": ["isNegative || isPositive ? 1 : 0"] }],
+      "sourceInvariants": [{ "file": "src/main/java/com/thealgorithms/maths/ParseInteger.java", "requiredPresent": ["public static int parseInt"] }],
       "allowedDiffScopes": [
         { "file": "src/main/java/com/thealgorithms/maths/ParseInteger.java", "allowWholeFile": true },
         { "file": "src/test/java/com/thealgorithms/maths/ParseIntegerTest.java", "allowWholeFile": true }
@@ -294,7 +294,7 @@
       "allowedSupportFiles": ["src/test/java/org/apache/commons/codec/binary/StringUtilsTest.java"],
       "explicitNoisePatterns": ["README.md", "src/site/**", ".github/**"],
       "requiredTouchedFiles": ["src/main/java/org/apache/commons/codec/binary/StringUtils.java"],
-      "sourceInvariants": [{ "file": "src/main/java/org/apache/commons/codec/binary/StringUtils.java", "requiredPresent": ["CharSequenceUtils.regionMatches(cs1, false, 0, cs2, 0, cs1.length())"] }],
+      "sourceInvariants": [{ "file": "src/main/java/org/apache/commons/codec/binary/StringUtils.java", "requiredPresent": ["public static boolean equals"] }],
       "allowedDiffScopes": [
         { "file": "src/main/java/org/apache/commons/codec/binary/StringUtils.java", "allowWholeFile": true },
         { "file": "src/test/java/org/apache/commons/codec/binary/StringUtilsTest.java", "allowWholeFile": true }
@@ -315,7 +315,7 @@
       "allowedSupportFiles": ["tests/test_circular_q.cpp"],
       "explicitNoisePatterns": ["README.md", "docs/**", ".github/**", "example/**"],
       "requiredTouchedFiles": ["include/spdlog/details/circular_q.h"],
-      "sourceInvariants": [{ "file": "include/spdlog/details/circular_q.h", "requiredPresent": ["max_items_(max_items + 1)"] }],
+      "sourceInvariants": [{ "file": "include/spdlog/details/circular_q.h", "requiredPresent": ["explicit circular_q(size_t max_items)"] }],
       "allowedDiffScopes": [
         { "file": "include/spdlog/details/circular_q.h", "allowWholeFile": true },
         { "file": "tests/test_circular_q.cpp", "allowWholeFile": true }
@@ -336,7 +336,7 @@
       "allowedSupportFiles": ["test/options.cpp"],
       "explicitNoisePatterns": ["README.md", "docs/**", ".github/**", "examples/**"],
       "requiredTouchedFiles": ["include/cxxopts.hpp"],
-      "sourceInvariants": [{ "file": "include/cxxopts.hpp", "requiredPresent": ["return !result.empty();"] }],
+      "sourceInvariants": [{ "file": "include/cxxopts.hpp", "requiredPresent": ["inline bool IsFalseText"] }],
       "allowedDiffScopes": [
         { "file": "include/cxxopts.hpp", "allowWholeFile": true },
         { "file": "test/options.cpp", "allowWholeFile": true }
@@ -363,7 +363,7 @@
       "allowedSupportFiles": ["test/test.cpp"],
       "explicitNoisePatterns": ["README.md", "doc/**", ".github/**", "example/**"],
       "requiredTouchedFiles": ["include/magic_enum/magic_enum_utility.hpp"],
-      "sourceInvariants": [{ "file": "include/magic_enum/magic_enum_utility.hpp", "requiredPresent": ["if (index < 0)"] }],
+      "sourceInvariants": [{ "file": "include/magic_enum/magic_enum_utility.hpp", "requiredPresent": ["enum_next_value_circular"] }],
       "allowedDiffScopes": [
         { "file": "include/magic_enum/magic_enum_utility.hpp", "allowWholeFile": true },
         { "file": "test/test.cpp", "allowWholeFile": true }

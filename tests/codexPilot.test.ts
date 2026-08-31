@@ -17,6 +17,7 @@ import {
   loadCodexPilotPlan
 } from "../src/bench/codexPilotPlan.js";
 import { codexThreadId, observedCodexUsage, parseCodexJsonl } from "../src/bench/codexPilotUsage.js";
+import { evaluateSourceInvariants } from "../src/bench/sourceValidation.js";
 
 describe("ecological Codex pilot", () => {
   it("keeps the checked-in 5x3 task-curation registry parseable and complete", () => {
@@ -57,6 +58,28 @@ describe("ecological Codex pilot", () => {
     expect(plan.tasks.every((task) => task.setupPatchFile && fs.existsSync(task.setupPatchFile))).toBe(true);
     expect(schedule).toHaveLength(30);
     expect(new Set(schedule.map((attempt) => attempt.blockId)).size).toBe(15);
+  });
+
+  it("accepts a behaviorally correct pilot repair without requiring the original patch spelling", () => {
+    const plan = loadCodexPilotPlan(path.resolve("benchmarks/plans/codex-v02c.pilot.sealed.json"));
+    const task = plan.tasks.find((candidate) => candidate.id === "java-json-pointer-escape-order");
+    expect(task).toBeDefined();
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-pilot-invariant-"));
+    const source = path.join(root, "src/main/java/org/json/JSONPointer.java");
+    fs.mkdirSync(path.dirname(source), { recursive: true });
+    fs.writeFileSync(source, [
+      "public class JSONPointer {",
+      "  private static String escape(String token) {",
+      "    String escaped = token.replace(\"~\", \"~0\");",
+      "    return escaped.replace(\"/\", \"~1\");",
+      "  }",
+      "}"
+    ].join("\n"));
+
+    expect(evaluateSourceInvariants({ rootPath: root, invariants: task?.sourceInvariants })).toMatchObject({
+      passed: true,
+      failures: []
+    });
   });
 
   it("parses only completed-turn observed usage and preserves reasoning tokens", () => {

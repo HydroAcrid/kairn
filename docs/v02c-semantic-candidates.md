@@ -581,3 +581,16 @@ This does not create a public effectiveness claim. It creates the fresh,
 balanced test needed to measure one. Public language stays unchanged until the
 repeated pilot can report observed token deltas, required-source recall,
 verification, harmful assists, noise, and negative results together.
+
+The first 15-task execution was intentionally stopped after nine complete
+pairs when the first Java agent produced a verifier-passing two-statement
+repair that was semantically equivalent to the original one-line fix. The
+task's source invariant incorrectly required that exact original spelling and
+would have classified the correct repair as a quality failure. The incomplete
+campaign is infrastructure-invalid and is not effectiveness evidence.
+
+All 15 task invariants now protect the continued presence of the relevant
+production API or symbol; the independent offline verifier and required-touch
+gate prove the behavioral repair. A regression test covers the Java refactor
+that exposed the defect. The restarted campaign must use the new plan hash and
+Kairn commit, and none of the earlier partial results may be mixed into it.
