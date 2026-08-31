@@ -524,9 +524,58 @@ describe("model-based semantic candidates", () => {
       edges: []
     });
 
-    expect(result.initialPaths).toContain(semanticFiles[55]!.path);
-    expect(result.initialPaths).not.toContain(semanticFiles[56]!.path);
+    expect(result.initialPaths).toContain(semanticFiles[47]!.path);
+    expect(result.initialPaths).not.toContain(semanticFiles[48]!.path);
     expect(result.initialPaths).toContain(lexicalFiles[0]!.path);
+    expect(result.initialPaths).toHaveLength(64);
+  });
+
+  it("preserves top lexical evidence when semantic, symbol, and graph lanes are all populated", () => {
+    const rootPath = "/repo";
+    const semanticFiles = Array.from({ length: 80 }, (_, index) =>
+      file(rootPath, `src/semantic-${String(index).padStart(2, "0")}.ts`)
+    );
+    const lexicalFiles = Array.from({ length: 10 }, (_, index) =>
+      file(rootPath, `src/lexical-${String(index).padStart(2, "0")}.ts`)
+    );
+    const symbolFiles = Array.from({ length: 4 }, (_, index) =>
+      file(rootPath, `src/symbol-${index}.ts`)
+    );
+    const graphFiles = Array.from({ length: 8 }, (_, index) =>
+      file(rootPath, `src/graph-${index}.ts`)
+    );
+    const semanticHits = semanticFiles.map((candidate, index) => ({
+      path: candidate.path,
+      similarity: 0.95 - index / 1_000,
+      documentIds: [`semantic-${index}`]
+    }));
+    const symbols = symbolFiles.map((candidate, index) => ({
+      rootPath,
+      filePath: candidate.path,
+      name: `focusSymbol${index}`,
+      kind: "function" as const,
+      exported: true,
+      startLine: 1,
+      endLine: 2,
+      signature: `focusSymbol${index}()`
+    }));
+
+    const result = buildModelCandidateUnion({
+      files: [...semanticFiles, ...lexicalFiles, ...symbolFiles, ...graphFiles],
+      query: "Repair focusSymbol0 focusSymbol1 focusSymbol2 focusSymbol3 behavior.",
+      symbols,
+      bm25Results: lexicalFiles.map((candidate, index) =>
+        scored(candidate, 1 - index / 100)
+      ),
+      semanticHits,
+      semanticStatus: readyStatus(semanticHits.length),
+      edges: graphFiles.map((candidate, index) =>
+        edge(rootPath, semanticFiles[index]!.path, candidate.path, "call")
+      )
+    });
+
+    expect(result.initialPaths).toContain(lexicalFiles[1]!.path);
+    expect(result.initialPaths).toContain(semanticFiles[47]!.path);
     expect(result.initialPaths).toHaveLength(64);
   });
 
@@ -1937,6 +1986,53 @@ describe("model-based semantic candidates", () => {
     }
   });
 
+  it("keeps very large repository coverage file-level without extra symbol inference", () => {
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-very-large-"));
+    try {
+      const files = Array.from({ length: 2_001 }, (_, index) => {
+        const filePath = `src/module-${index}.ts`;
+        fs.mkdirSync(path.dirname(path.join(rootPath, filePath)), { recursive: true });
+        fs.writeFileSync(path.join(rootPath, filePath), `export function operation${index}() {}\n`);
+        return file(rootPath, filePath);
+      });
+      const symbols = files.map((record, index) => ({
+        rootPath,
+        filePath: record.path,
+        name: `operation${index}`,
+        kind: "function" as const,
+        exported: true,
+        startLine: 1,
+        endLine: 1,
+        signature: `operation${index}()`
+      }));
+      const graph: RepoGraph = {
+        rootPath,
+        files,
+        parsedFiles: files.map((record, index) => ({
+          rootPath,
+          filePath: record.path,
+          language: "typescript",
+          imports: [],
+          hasErrors: false,
+          symbols: [symbols[index]!]
+        })),
+        symbols,
+        edges: []
+      };
+
+      const documents = buildSemanticDocuments({
+        rootPath,
+        graph,
+        maxDocuments: 7_500
+      });
+      expect(documents).toHaveLength(files.length);
+      expect(documents.every((document) => document.kind === "file")).toBe(true);
+      expect(new Set(documents.map((document) => document.filePath)).size).toBe(files.length);
+    } finally {
+      fs.rmSync(rootPath, { recursive: true, force: true });
+    }
+  });
+
   it("preserves structurally sampled declarations and source regions within the model document budget", () => {
     const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-representative-"));
     try {
@@ -1977,11 +2073,11 @@ describe("model-based semantic candidates", () => {
         graph,
         maxDocuments: 1
       })[0]!;
-      expect(fileDocument.text.length).toBeLessThanOrEqual(768);
+      expect(fileDocument.text.length).toBeLessThanOrEqual(512);
       expect(fileDocument.text).toContain("operation0");
       expect(fileDocument.text).toContain("operation19");
-      expect(fileDocument.text).toContain("callable surface:");
-      expect(fileDocument.text).toContain("operation11");
+      expect(fileDocument.text).toContain("declared symbols:");
+      expect(fileDocument.text).toContain("operation10");
       expect(fileDocument.text).toContain("package-0");
       expect(fileDocument.text).toContain("package-19");
       expect(fileDocument.text).toContain("region_0_sentinel");
@@ -2039,7 +2135,7 @@ describe("model-based semantic candidates", () => {
         graph,
         maxDocuments: 1
       })[0]!;
-      expect(fileDocument.text.length).toBeLessThanOrEqual(768);
+      expect(fileDocument.text.length).toBeLessThanOrEqual(512);
       expect(fileDocument.text).toContain(
         "AttachConfig connects removed configuration blocks to graph nodes"
       );

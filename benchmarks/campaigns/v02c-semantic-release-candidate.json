@@ -14,7 +14,7 @@
   "semantic": {
     "modelId": "jina-code-v2-q8",
     "upstreamRevision": "516f4baf13dec4ddddda8631e019b5737c8bc250",
-    "documentSchemaVersion": "semantic-documents-v6",
+    "documentSchemaVersion": "semantic-documents-v7",
     "candidateLimit": 64,
     "enrichedCandidateLimit": 128
   },

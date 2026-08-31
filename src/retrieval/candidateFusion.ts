@@ -65,11 +65,13 @@ export type ModelCandidateUnion = {
  */
 export const MODEL_RETRIEVAL_PROBE_LIMIT = 512;
 const PRIMARY_SEMANTIC_QUERY_VIEW_LIMIT = 2;
-const MODEL_INITIAL_SEMANTIC_RESERVE = Math.floor(
+const MODEL_GRAPH_SEED_SEMANTIC_RESERVE = Math.floor(
   DEFAULT_INITIAL_CANDIDATE_LIMIT * 7 / 8
 );
+const MODEL_INITIAL_SEMANTIC_RESERVE = 48;
+const MODEL_INITIAL_BM25_RESERVE = 8;
 const MODEL_INITIAL_SYMBOL_RESERVE = 4;
-const MODEL_INITIAL_GRAPH_RESERVE = 16;
+const MODEL_INITIAL_GRAPH_RESERVE = 4;
 const MAX_TEST_GRAPH_PROBE_PATHS = 192;
 const GRAPH_ENRICHMENT_CAPACITY =
   DEFAULT_ENRICHED_CANDIDATE_LIMIT - DEFAULT_INITIAL_CANDIDATE_LIMIT;
@@ -192,14 +194,14 @@ export function buildModelCandidateUnion(input: {
   // remainder. Hard paths stay first and the public bound does not change.
   const preliminaryUnion = uniquePaths([
     ...hardPaths,
-    ...semanticPaths.slice(0, MODEL_INITIAL_SEMANTIC_RESERVE),
+    ...semanticPaths.slice(0, MODEL_GRAPH_SEED_SEMANTIC_RESERVE),
     ...fusedRetrievalOrder
   ])
     .filter((filePath) => filesByPath.has(filePath))
     .slice(0, MODEL_RETRIEVAL_PROBE_LIMIT);
   const preliminaryGraphSeedPaths = uniquePaths([
     ...hardPaths,
-    ...semanticPaths.slice(0, MODEL_INITIAL_SEMANTIC_RESERVE),
+    ...semanticPaths.slice(0, MODEL_GRAPH_SEED_SEMANTIC_RESERVE),
     ...fusedRetrievalOrder
   ])
     .filter((filePath) => filesByPath.has(filePath))
@@ -306,6 +308,7 @@ export function buildModelCandidateUnion(input: {
   const initialPaths = uniquePaths([
     ...hardPaths,
     ...semanticPaths.slice(0, MODEL_INITIAL_SEMANTIC_RESERVE),
+    ...bm25Paths.slice(0, MODEL_INITIAL_BM25_RESERVE),
     ...eligibleSymbolPaths.slice(0, MODEL_INITIAL_SYMBOL_RESERVE),
     ...graphPaths.slice(0, MODEL_INITIAL_GRAPH_RESERVE),
     ...fusedRetrievalOrder,

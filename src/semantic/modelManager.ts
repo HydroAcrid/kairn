@@ -288,7 +288,12 @@ function validateManifest(manifest: SemanticModelManifest): void {
     !/^[0-9a-f]{40}$/i.test(manifest.upstreamRevision) ||
     !Number.isInteger(manifest.dimensions) ||
     manifest.dimensions <= 0 ||
-    !["semantic-documents-v4", "semantic-documents-v5", "semantic-documents-v6"].includes(manifest.documentSchemaVersion) ||
+    ![
+      "semantic-documents-v4",
+      "semantic-documents-v5",
+      "semantic-documents-v6",
+      "semantic-documents-v7"
+    ].includes(manifest.documentSchemaVersion) ||
     manifest.runtime.library !== "kairn-onnx-wasm-v1" ||
     manifest.runtime.modelFilePath !== "onnx/model.onnx" ||
     (manifest.runtime.outputName !== undefined && !manifest.runtime.outputName.trim()) ||

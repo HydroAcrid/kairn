@@ -12,15 +12,17 @@ import { readTextFile } from "../retrieval/readSource.js";
 import { sha256 } from "../utils/hash.js";
 import { estimateTokens } from "../utils/tokens.js";
 
-export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v6" as const;
+export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v7" as const;
 // Keep structured metadata plus representative source within a compact CPU
 // inference window. The model still receives multiple regions from large
 // files, while cold indexing cost remains proportional to useful evidence.
-const MAX_DOCUMENT_CHARS = 768;
-const MAX_FILE_SYMBOLS = 4;
+const MAX_DOCUMENT_CHARS = 512;
+const MIN_SOURCE_BODY_CHARS = 112;
+const MAX_FILE_SYMBOLS = 12;
 const MAX_DIRECT_IMPORTS = 4;
 const MAX_DOCUMENTATION_SNIPPETS = 3;
 const LARGE_REPOSITORY_SYMBOL_FRACTION = 0.25;
+const VERY_LARGE_REPOSITORY_FILE_THRESHOLD = 2_000;
 
 export function buildSemanticDocuments(input: {
   rootPath: string;
@@ -61,9 +63,12 @@ export function buildSemanticDocuments(input: {
   // enrichment and may use at most one quarter as many documents as files,
   // while always remaining inside the configured document budget.
   const remainingDocumentBudget = Math.max(0, input.maxDocuments - selected.length);
+  const symbolFraction = selected.length > VERY_LARGE_REPOSITORY_FILE_THRESHOLD
+    ? 0
+    : LARGE_REPOSITORY_SYMBOL_FRACTION;
   const symbolBudget = Math.min(
     remainingDocumentBudget,
-    Math.ceil(selected.length * LARGE_REPOSITORY_SYMBOL_FRACTION)
+    Math.ceil(selected.length * symbolFraction)
   );
   if (symbolBudget > 0) {
     selected.push(...allocateSymbolDocuments(symbolQueues, symbolBudget));
@@ -86,51 +91,25 @@ function buildFileDocument(
   const declaredSymbols = evenlySampleIncludingEndpoints(
     behavioralSymbols,
     Math.min(MAX_FILE_SYMBOLS, behavioralSymbols.length)
-  ).map((symbol) => `${symbol.kind} ${boundedField(symbol.signature || symbol.name, 56)}`);
-  const callableSurface = callableSurfaceNames(behavioralSymbols);
+  ).map((symbol) => symbol.name);
   const documentation = extractLeadingDocumentation(content, behavioralSymbols);
-  const fileImportLimit = documentation.length > 0 ? 3 : MAX_DIRECT_IMPORTS;
   const directImports = parsed?.imports.length
-    ? evenlySampleIncludingEndpoints(parsed.imports, Math.min(fileImportLimit, parsed.imports.length))
+    ? evenlySampleIncludingEndpoints(parsed.imports, Math.min(MAX_DIRECT_IMPORTS, parsed.imports.length))
       .map((item) => boundedField(item, 48))
     : [];
-  const prefix = documentation.length > 0
-    ? [
-        `file: ${boundedField(file.path, callableSurface.length > 0 ? 96 : 112)}`,
-        `language: ${file.language}`,
-        `role: ${file.kind}`,
-        `module: ${boundedField(path.posix.dirname(file.path), callableSurface.length > 0 ? 48 : 56)}`,
-        boundedList("declared symbols", declaredSymbols, callableSurface.length > 0 ? 96 : 112),
-        boundedList("direct imports", directImports, callableSurface.length > 0 ? 64 : 80),
-        ...(callableSurface.length > 0
-          ? [boundedList("callable surface", callableSurface, 112)]
-          : []),
-        boundedList("documentation", documentation, callableSurface.length > 0 ? 168 : 224),
-        "",
-        "representative source:"
-      ].join("\n")
-    : callableSurface.length > 0
-      ? [
-          `file: ${boundedField(file.path, 112)}`,
-          `language: ${file.language}`,
-          `role: ${file.kind}`,
-          `module: ${boundedField(path.posix.dirname(file.path), 56)}`,
-          boundedList("declared symbols", declaredSymbols, 112),
-          boundedList("direct imports", directImports, 80),
-          boundedList("callable surface", callableSurface, 180),
-          "",
-          "representative source:"
-        ].join("\n")
-    : [
-        `file: ${boundedField(file.path, 160)}`,
-        `language: ${file.language}`,
-        `role: ${file.kind}`,
-        `module: ${boundedField(path.posix.dirname(file.path), 80)}`,
-        boundedList("declared symbols", declaredSymbols, 140),
-        boundedList("direct imports", directImports, 140),
-        "",
-        "representative source:"
-      ].join("\n");
+  const prefix = [
+    `file: ${boundedField(file.path, 96)}`,
+    `language: ${file.language}`,
+    `role: ${file.kind}`,
+    `module: ${boundedField(path.posix.dirname(file.path), 56)}`,
+    boundedWholeItemList("declared symbols", declaredSymbols, 140),
+    ...(documentation.length > 0
+      ? [boundedList("documentation", documentation, 120)]
+      : []),
+    boundedWholeItemList("direct imports", directImports, 80),
+    "",
+    "representative source:"
+  ].join("\n");
   const text = composeDocument(prefix, content);
   return semanticDocument({
     rootPath: file.rootPath,
@@ -139,16 +118,6 @@ function buildFileDocument(
     identity: `${file.path}\0file`,
     text
   });
-}
-
-function callableSurfaceNames(symbols: SymbolRecord[]): string[] {
-  const unique = [...new Set(
-    symbols
-      .filter((symbol) => symbol.kind === "function" || symbol.kind === "component")
-      .map((symbol) => symbol.name)
-  )];
-  if (unique.length <= MAX_FILE_SYMBOLS) return [];
-  return evenlySampleIncludingEndpoints(unique, Math.min(10, unique.length));
 }
 
 function buildSymbolDocument(
@@ -331,8 +300,20 @@ function truncateDocument(text: string): string {
 
 function composeDocument(prefix: string, body: string): string {
   const separator = "\n";
-  const bodyBudget = Math.max(1, MAX_DOCUMENT_CHARS - prefix.length - separator.length);
-  return truncateDocument(`${prefix}${separator}${representativeSource(body, bodyBudget)}`);
+  const prefixBudget = Math.max(
+    1,
+    MAX_DOCUMENT_CHARS - MIN_SOURCE_BODY_CHARS - separator.length
+  );
+  const boundedPrefix = prefix.length <= prefixBudget
+    ? prefix
+    : prefix.slice(0, prefixBudget).trimEnd();
+  const bodyBudget = Math.max(
+    MIN_SOURCE_BODY_CHARS,
+    MAX_DOCUMENT_CHARS - boundedPrefix.length - separator.length
+  );
+  return truncateDocument(
+    `${boundedPrefix}${separator}${representativeSource(body, bodyBudget)}`
+  );
 }
 
 function boundedList(label: string, values: string[], maxChars: number): string {
@@ -345,6 +326,19 @@ function boundedList(label: string, values: string[], maxChars: number): string 
     Math.floor((available - separator.length * (values.length - 1)) / values.length)
   );
   return `${prefix}${values.map((value) => boundedField(value, perItem)).join(separator)}`;
+}
+
+function boundedWholeItemList(label: string, values: string[], maxChars: number): string {
+  if (values.length === 0) return `${label}: none`;
+  const prefix = `${label}: `;
+  const available = Math.max(1, maxChars - prefix.length);
+  for (let count = values.length; count >= 1; count -= 1) {
+    const selected = evenlySampleIncludingEndpoints(values, count)
+      .map((value) => boundedField(value, 48));
+    const rendered = selected.join("; ");
+    if (rendered.length <= available) return `${prefix}${rendered}`;
+  }
+  return `${prefix}${boundedField(values[0]!, available)}`;
 }
 
 function boundedField(value: string, maxChars: number): string {
