@@ -10,7 +10,7 @@ export type CodexPilotPin = {
   package: "@openai/codex";
   version: "0.145.0";
   integrity: "sha512-/PSPSFujjjmiyVFvG2yu/grOFhsWdokTH8t2KGWhXSo/M5n/dIDsnbsnO82/7bLtIoDuzQf7ATBUMWqPWQINlQ==";
-  model: "gpt-5.6";
+  model: "gpt-5.6-sol";
   reasoningEffort: "medium";
   serviceTier: "standard";
   fastMode: false;

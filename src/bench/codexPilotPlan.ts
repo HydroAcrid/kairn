@@ -23,7 +23,7 @@ export const CODEX_PILOT_PIN = Object.freeze({
   package: "@openai/codex" as const,
   version: "0.145.0" as const,
   integrity: "sha512-/PSPSFujjjmiyVFvG2yu/grOFhsWdokTH8t2KGWhXSo/M5n/dIDsnbsnO82/7bLtIoDuzQf7ATBUMWqPWQINlQ==" as const,
-  model: "gpt-5.6" as const,
+  model: "gpt-5.6-sol" as const,
   reasoningEffort: "medium" as const,
   serviceTier: "standard" as const,
   fastMode: false as const

@@ -8,7 +8,7 @@ ReasonBlocks experiment and cannot produce a ReasonBlocks comparison claim.
 
 - `@openai/codex@0.145.0`
 - npm integrity `sha512-/PSPSFujjjmiyVFvG2yu/grOFhsWdokTH8t2KGWhXSo/M5n/dIDsnbsnO82/7bLtIoDuzQf7ATBUMWqPWQINlQ==`
-- model `gpt-5.6`
+- model `gpt-5.6-sol` (the subscription-compatible explicit model ID)
 - reasoning effort `medium`
 - standard service tier; Fast mode off
 - ChatGPT subscription authentication in a dedicated local `CODEX_HOME`
