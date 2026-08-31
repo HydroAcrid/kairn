@@ -12,12 +12,11 @@ import { readTextFile } from "../retrieval/readSource.js";
 import { sha256 } from "../utils/hash.js";
 import { estimateTokens } from "../utils/tokens.js";
 
-export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v5" as const;
-// Jina v2 was trained with 512-token inputs. Code in the current profile
-// averages roughly three to four characters per tokenizer token, so 1,500
-// characters uses the model's learned window without routinely hitting the
-// hard 512-token truncation boundary.
-const MAX_DOCUMENT_CHARS = 1_500;
+export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v6" as const;
+// Keep structured metadata plus representative source within a compact CPU
+// inference window. The model still receives multiple regions from large
+// files, while cold indexing cost remains proportional to useful evidence.
+const MAX_DOCUMENT_CHARS = 768;
 const MAX_FILE_SYMBOLS = 4;
 const MAX_DIRECT_IMPORTS = 4;
 const MAX_DOCUMENTATION_SNIPPETS = 3;

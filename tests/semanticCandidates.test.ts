@@ -1977,7 +1977,7 @@ describe("model-based semantic candidates", () => {
         graph,
         maxDocuments: 1
       })[0]!;
-      expect(fileDocument.text.length).toBeLessThanOrEqual(1_500);
+      expect(fileDocument.text.length).toBeLessThanOrEqual(768);
       expect(fileDocument.text).toContain("operation0");
       expect(fileDocument.text).toContain("operation19");
       expect(fileDocument.text).toContain("callable surface:");
@@ -2039,7 +2039,7 @@ describe("model-based semantic candidates", () => {
         graph,
         maxDocuments: 1
       })[0]!;
-      expect(fileDocument.text.length).toBeLessThanOrEqual(1_500);
+      expect(fileDocument.text.length).toBeLessThanOrEqual(768);
       expect(fileDocument.text).toContain(
         "AttachConfig connects removed configuration blocks to graph nodes"
       );
