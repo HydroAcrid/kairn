@@ -6,6 +6,8 @@ import type {
   EvidenceDelivery,
   EvidenceRankerArtifact,
   EvidenceRankerStatus,
+  EvidenceSemanticInteraction,
+  EvidenceServingFeatureVector,
   FileRecord,
   GraphEdgeRecord,
   HybridScoredResult,
@@ -15,6 +17,7 @@ import type {
 } from "../types.js";
 import {
   BUNDLED_EVIDENCE_ARTIFACT,
+  BUNDLED_SEMANTIC_RC_EVIDENCE_ARTIFACT,
   EVIDENCE_FEATURE_SCHEMA_VERSION,
   loadEvidenceRankerArtifact,
   predictEvidenceRelevance
@@ -32,6 +35,8 @@ export type EvidenceRankingInput = {
   candidateResults?: HybridScoredResult[];
   /** Frozen bounded union selected before query-local enrichment. */
   candidatePaths?: string[];
+  /** Real local model similarities for the frozen semantic candidate union. */
+  semanticInteractions?: EvidenceSemanticInteraction[];
   shown?: ContextShownRecord[];
   changedFiles?: Set<string>;
 };
@@ -78,7 +83,10 @@ export function rankEvidenceResults(
     ...(input.shown ? { shown: input.shown } : {}),
     ...(input.changedFiles ? { changedFiles: input.changedFiles } : {})
   });
-  const artifactResult = resolveArtifact(config);
+  const interactionByPath = new Map(
+    (input.semanticInteractions ?? []).map((interaction) => [interaction.path, interaction])
+  );
+  const artifactResult = resolveArtifact(config, interactionByPath.size > 0);
   if (!artifactResult.artifact) {
     return rankWithFallback(input, candidateSet.candidates, config, artifactResult.error);
   }
@@ -86,7 +94,10 @@ export function rankEvidenceResults(
   const ranked = candidateSet.candidates
     .map((candidate) => ({
       candidate,
-      probability: predictEvidenceRelevance(artifactResult.artifact!, candidate.features).relevanceProbability
+      probability: predictEvidenceRelevance(
+        artifactResult.artifact!,
+        semanticServingFeatures(candidate.features, interactionByPath.get(candidate.path))
+      ).relevanceProbability
     }))
     .sort((left, right) => right.probability - left.probability || left.candidate.path.localeCompare(right.candidate.path));
   const annotated = annotateRanked(input, ranked, artifactResult.artifact, config.mode);
@@ -240,14 +251,25 @@ function validateRankerConfig(config: RankerConfig): RankerConfig {
   return { ...config };
 }
 
-function resolveArtifact(config: RankerConfig): { artifact?: EvidenceRankerArtifact; error: string } {
+function resolveArtifact(
+  config: RankerConfig,
+  hasSemanticInteractions: boolean
+): { artifact?: EvidenceRankerArtifact; error: string } {
   if (!config.modelPath) {
     if (config.mode === "calibrated") {
+      if (hasSemanticInteractions) {
+        return { artifact: BUNDLED_SEMANTIC_RC_EVIDENCE_ARTIFACT, error: "" };
+      }
       return {
         error: "Calibrated serving requires an explicit promoted local model artifact; the bundled bootstrap is shadow-only."
       };
     }
-    return { artifact: BUNDLED_EVIDENCE_ARTIFACT, error: "" };
+    return {
+      artifact: hasSemanticInteractions
+        ? BUNDLED_SEMANTIC_RC_EVIDENCE_ARTIFACT
+        : BUNDLED_EVIDENCE_ARTIFACT,
+      error: ""
+    };
   }
   try {
     return { artifact: loadEvidenceRankerArtifact(config.modelPath), error: "" };
@@ -256,6 +278,26 @@ function resolveArtifact(config: RankerConfig): { artifact?: EvidenceRankerArtif
       error: error instanceof Error ? error.message : String(error)
     };
   }
+}
+
+function semanticServingFeatures(
+  base: EvidenceCandidate["features"],
+  interaction?: EvidenceSemanticInteraction
+): EvidenceServingFeatureVector {
+  const fileSimilarity = finiteSimilarity(interaction?.fileSimilarity);
+  const symbolSimilarity = finiteSimilarity(interaction?.symbolSimilarity);
+  return {
+    ...base,
+    semanticFile: fileSimilarity ?? 0,
+    semanticSymbol: symbolSimilarity ?? 0,
+    missingSemanticFile: fileSimilarity === undefined ? 1 : 0,
+    missingSemanticSymbol: symbolSimilarity === undefined ? 1 : 0
+  };
+}
+
+function finiteSimilarity(value: number | undefined): number | undefined {
+  if (value === undefined || !Number.isFinite(value)) return undefined;
+  return Math.max(0, Math.min(1, value));
 }
 
 function synthesizeResult(

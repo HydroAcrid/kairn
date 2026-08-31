@@ -365,6 +365,7 @@ function rankCandidates(model: EvidenceRankerArtifact, candidates: RankabilityCa
   const ranked = candidates.map((candidate): RankedCandidate => {
     const features = featureVector(candidate.features);
     const prediction = predictEvidenceRelevance(model, features);
+    const featureValues = features as unknown as Record<string, number | undefined>;
     return {
       candidate,
       rank: 0,
@@ -372,12 +373,18 @@ function rankCandidates(model: EvidenceRankerArtifact, candidates: RankabilityCa
       rawScore: prediction.rawScore,
       uncalibratedProbability: prediction.uncalibratedProbability,
       probability: prediction.relevanceProbability,
-      contributions: model.orderedFeatures.map((feature, index) => ({
-        feature,
-        value: features[feature],
-        coefficient: model.coefficients[index]!,
-        contribution: round(features[feature] * model.coefficients[index]!)
-      }))
+      contributions: model.orderedFeatures.map((feature, index) => {
+        const value = featureValues[feature];
+        if (typeof value !== "number") {
+          throw new Error(`Rankability input does not contain model feature ${feature}.`);
+        }
+        return {
+          feature,
+          value,
+          coefficient: model.coefficients[index]!,
+          contribution: round(value * model.coefficients[index]!)
+        };
+      })
     };
   }).sort((left, right) => right.hardPriority - left.hardPriority || right.probability - left.probability || left.candidate.path.localeCompare(right.candidate.path));
   ranked.forEach((item, index) => { item.rank = index + 1; });

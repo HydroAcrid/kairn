@@ -121,6 +121,34 @@ export type EvidenceFeatureName = (typeof EVIDENCE_FEATURE_NAMES)[number];
 
 export type EvidenceFeatureVector = Record<EvidenceFeatureName, number>;
 
+/**
+ * Model-derived query/document interactions used by semantic serving. These
+ * are deliberately separate from the structural v4 features so older local
+ * artifacts and frozen research datasets remain reproducible.
+ */
+export const EVIDENCE_SEMANTIC_FEATURE_NAMES = Object.freeze([
+  "semanticFile",
+  "semanticSymbol",
+  "missingSemanticFile",
+  "missingSemanticSymbol"
+] as const);
+
+export const EVIDENCE_FEATURE_NAMES_V5 = Object.freeze([
+  ...EVIDENCE_FEATURE_NAMES,
+  ...EVIDENCE_SEMANTIC_FEATURE_NAMES
+] as const);
+
+export type EvidenceSemanticFeatureName = (typeof EVIDENCE_SEMANTIC_FEATURE_NAMES)[number];
+export type EvidenceServingFeatureName = (typeof EVIDENCE_FEATURE_NAMES_V5)[number];
+export type EvidenceServingFeatureVector = EvidenceFeatureVector & Record<EvidenceSemanticFeatureName, number>;
+
+export type EvidenceSemanticInteraction = {
+  path: string;
+  similarity: number;
+  fileSimilarity?: number;
+  symbolSimilarity?: number;
+};
+
 export type EvidenceCandidate = {
   path: string;
   reasons: EvidenceReason[];
@@ -162,12 +190,7 @@ export type EvidenceCandidateInspection = {
     semanticFused: string[];
     semanticEvidence: string[];
     /** Model-only whole-file and symbol-body similarities for feature research. */
-    semanticInteractions?: Array<{
-      path: string;
-      similarity: number;
-      fileSimilarity?: number;
-      symbolSimilarity?: number;
-    }>;
+    semanticInteractions?: EvidenceSemanticInteraction[];
     bm25: string[];
     graph: string[];
     graphImporter?: string[];
@@ -197,9 +220,9 @@ export type EvidenceRankerThresholds = {
 export type EvidenceRankerArtifact = {
   formatVersion: 1;
   modelId: string;
-  featureSchemaVersion: "evidence-features-v4";
+  featureSchemaVersion: "evidence-features-v4" | "evidence-features-v5";
   featureSchemaHash: string;
-  orderedFeatures: EvidenceFeatureName[];
+  orderedFeatures: EvidenceServingFeatureName[];
   intercept: number;
   coefficients: number[];
   calibration: {

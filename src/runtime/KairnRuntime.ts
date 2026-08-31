@@ -1539,6 +1539,9 @@ export class KairnRuntime {
       legacyResults: legacyScored,
       candidateResults: rankerCandidates,
       ...(servingCandidateIndex ? { candidatePaths: servingCandidateIndex.candidateFiles } : {}),
+      ...(servingCandidateIndex?.candidateDiagnostics?.semanticInteractions
+        ? { semanticInteractions: servingCandidateIndex.candidateDiagnostics.semanticInteractions }
+        : {}),
       shown: session.filesShown,
       changedFiles
     }, effectiveRanker);

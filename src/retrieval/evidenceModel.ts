@@ -5,15 +5,22 @@ import path from "node:path";
 import type {
   EvidenceFeatureVector,
   EvidenceModelPrediction,
-  EvidenceRankerArtifact
+  EvidenceRankerArtifact,
+  EvidenceServingFeatureName,
+  EvidenceServingFeatureVector
 } from "../types.js";
-import { EVIDENCE_FEATURE_NAMES } from "../types.js";
+import { EVIDENCE_FEATURE_NAMES, EVIDENCE_FEATURE_NAMES_V5 } from "../types.js";
 import { sha256 } from "../utils/hash.js";
 
 export const EVIDENCE_FEATURE_SCHEMA_VERSION = "evidence-features-v4" as const;
 export const EVIDENCE_FEATURE_SCHEMA_HASH = sha256(stableStringify({
   version: EVIDENCE_FEATURE_SCHEMA_VERSION,
   features: EVIDENCE_FEATURE_NAMES
+}));
+export const EVIDENCE_SEMANTIC_FEATURE_SCHEMA_VERSION = "evidence-features-v5" as const;
+export const EVIDENCE_SEMANTIC_FEATURE_SCHEMA_HASH = sha256(stableStringify({
+  version: EVIDENCE_SEMANTIC_FEATURE_SCHEMA_VERSION,
+  features: EVIDENCE_FEATURE_NAMES_V5
 }));
 
 type EvidenceArtifactPayload = Omit<EvidenceRankerArtifact, "checksum">;
@@ -77,6 +84,69 @@ export const BUNDLED_EVIDENCE_ARTIFACT: EvidenceRankerArtifact = deepFreeze({
   checksum: checksumEvidenceArtifact(BUNDLED_PAYLOAD)
 });
 
+const BUNDLED_SEMANTIC_RC_PAYLOAD: EvidenceArtifactPayload = {
+  formatVersion: 1,
+  modelId: "kairn-semantic-rc-v185",
+  featureSchemaVersion: EVIDENCE_SEMANTIC_FEATURE_SCHEMA_VERSION,
+  featureSchemaHash: EVIDENCE_SEMANTIC_FEATURE_SCHEMA_HASH,
+  orderedFeatures: [...EVIDENCE_FEATURE_NAMES_V5],
+  intercept: 0,
+  coefficients: [
+    0.57894291766336,
+    0.42145941581431995,
+    -0.1427037824930103,
+    0.5670670793576064,
+    0.3132802182402933,
+    0,
+    1.8879857078178868,
+    0.358282620271499,
+    0,
+    0,
+    0.6901173264588106,
+    0.7549948680951271,
+    -0.22877528409529765,
+    1.1118319757474153,
+    1.3135054387636007,
+    1.8428570501161907,
+    -0.14644960274817242,
+    1.2058265143248494,
+    -1.165111376788754,
+    -0.03834796844319842,
+    0,
+    1.2058265143248494,
+    0.07686611708932847,
+    0.9685874317577245,
+    0.1716581751804069,
+    -0.6036205971256031,
+    1.9515580273135158,
+    1.5934447932096003,
+    -0.15027429343203724,
+    0.07493930643734337
+  ],
+  calibration: {
+    kind: "platt",
+    a: 1.7411593490520318,
+    b: -16.123125497774744
+  },
+  decisionThresholds: {
+    abstain: 0.000620329641,
+    pathHint: 0.000620329641,
+    content: 0.055608651148
+  },
+  trainingDataHash: "0d57ad39ce40239e16c7885c677f998c3447a09f4346b0114f9fb6c24e5b09b0",
+  trainingManifest: "semantic-document-feature-diagnostic.v185-reviewed-negatives"
+};
+
+/**
+ * Opt-in semantic release-candidate ranker. It is bundled so an installed
+ * Kairn can be tested fully offline after the embedding model is installed.
+ * It is not the default until live quality and token gates pass.
+ */
+export const BUNDLED_SEMANTIC_RC_EVIDENCE_ARTIFACT: EvidenceRankerArtifact = deepFreeze({
+  ...BUNDLED_SEMANTIC_RC_PAYLOAD,
+  checksum: checksumEvidenceArtifact(BUNDLED_SEMANTIC_RC_PAYLOAD)
+});
+
 export function checksumEvidenceArtifact(artifact: EvidenceArtifactPayload): string {
   return sha256(stableStringify(artifact));
 }
@@ -114,24 +184,34 @@ export function validateEvidenceRankerArtifact(value: unknown): EvidenceRankerAr
   if (artifact.formatVersion !== 1) {
     throw new Error(`Unsupported evidence ranker artifact formatVersion: ${String(artifact.formatVersion)}`);
   }
-  if (artifact.featureSchemaVersion !== EVIDENCE_FEATURE_SCHEMA_VERSION) {
+  if (
+    artifact.featureSchemaVersion !== EVIDENCE_FEATURE_SCHEMA_VERSION &&
+    artifact.featureSchemaVersion !== EVIDENCE_SEMANTIC_FEATURE_SCHEMA_VERSION
+  ) {
     throw new Error(`Unsupported evidence feature schema: ${String(artifact.featureSchemaVersion)}`);
   }
-  if (artifact.featureSchemaHash !== EVIDENCE_FEATURE_SCHEMA_HASH) {
+  const featureSchemaVersion = artifact.featureSchemaVersion;
+  const expectedFeatures = featureSchemaVersion === EVIDENCE_SEMANTIC_FEATURE_SCHEMA_VERSION
+    ? EVIDENCE_FEATURE_NAMES_V5
+    : EVIDENCE_FEATURE_NAMES;
+  const expectedSchemaHash = featureSchemaVersion === EVIDENCE_SEMANTIC_FEATURE_SCHEMA_VERSION
+    ? EVIDENCE_SEMANTIC_FEATURE_SCHEMA_HASH
+    : EVIDENCE_FEATURE_SCHEMA_HASH;
+  if (artifact.featureSchemaHash !== expectedSchemaHash) {
     throw new Error("Evidence ranker feature schema hash does not match this runtime.");
   }
 
   const modelId = requireNonEmptyString(artifact.modelId, "modelId");
   const orderedFeatures = requireStringArray(artifact.orderedFeatures, "orderedFeatures");
   if (
-    orderedFeatures.length !== EVIDENCE_FEATURE_NAMES.length ||
-    orderedFeatures.some((feature, index) => feature !== EVIDENCE_FEATURE_NAMES[index])
+    orderedFeatures.length !== expectedFeatures.length ||
+    orderedFeatures.some((feature, index) => feature !== expectedFeatures[index])
   ) {
     throw new Error("Evidence ranker orderedFeatures must exactly match the runtime feature schema.");
   }
 
   const coefficients = requireFiniteNumberArray(artifact.coefficients, "coefficients");
-  if (coefficients.length !== EVIDENCE_FEATURE_NAMES.length) {
+  if (coefficients.length !== expectedFeatures.length) {
     throw new Error("Evidence ranker coefficient count does not match orderedFeatures.");
   }
 
@@ -153,9 +233,9 @@ export function validateEvidenceRankerArtifact(value: unknown): EvidenceRankerAr
   const candidate: EvidenceRankerArtifact = {
     formatVersion: 1,
     modelId,
-    featureSchemaVersion: EVIDENCE_FEATURE_SCHEMA_VERSION,
-    featureSchemaHash: EVIDENCE_FEATURE_SCHEMA_HASH,
-    orderedFeatures: [...EVIDENCE_FEATURE_NAMES],
+    featureSchemaVersion,
+    featureSchemaHash: expectedSchemaHash,
+    orderedFeatures: [...expectedFeatures],
     intercept: requireFiniteNumber(artifact.intercept, "intercept"),
     coefficients,
     calibration: {
@@ -179,14 +259,14 @@ export function validateEvidenceRankerArtifact(value: unknown): EvidenceRankerAr
 
 export function predictEvidenceRelevance(
   artifact: EvidenceRankerArtifact,
-  features: EvidenceFeatureVector
+  features: EvidenceFeatureVector | EvidenceServingFeatureVector
 ): EvidenceModelPrediction {
   let rawScore = artifact.intercept;
   for (let index = 0; index < artifact.orderedFeatures.length; index += 1) {
     const feature = artifact.orderedFeatures[index]!;
     const coefficient = artifact.coefficients[index]!;
-    const value = features[feature];
-    if (!Number.isFinite(value)) {
+    const value = (features as Partial<Record<EvidenceServingFeatureName, number>>)[feature];
+    if (typeof value !== "number" || !Number.isFinite(value)) {
       throw new Error(`Evidence feature ${feature} must be finite.`);
     }
     rawScore += coefficient * value;

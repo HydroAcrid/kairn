@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   BUNDLED_EVIDENCE_ARTIFACT,
+  BUNDLED_SEMANTIC_RC_EVIDENCE_ARTIFACT,
   EVIDENCE_FEATURE_SCHEMA_HASH,
   predictEvidenceRelevance,
   validateEvidenceRankerArtifact
@@ -797,6 +798,26 @@ describe("evidence ranker modes", () => {
       modelId: "deterministic-evidence-fallback-v1"
     });
     expect(result.status.fallbackReason).toContain("explicit promoted local model artifact");
+  });
+
+  it("serves the bundled semantic release candidate only with real model interactions", () => {
+    const result = rankEvidenceResults({
+      ...input,
+      semanticInteractions: [
+        { path: source.path, similarity: 0.91, fileSimilarity: 0.91, symbolSimilarity: 0.88 },
+        { path: test.path, similarity: 0.21, fileSimilarity: 0.21, symbolSimilarity: 0.14 }
+      ]
+    }, { mode: "calibrated" });
+
+    expect(validateEvidenceRankerArtifact(BUNDLED_SEMANTIC_RC_EVIDENCE_ARTIFACT))
+      .toEqual(BUNDLED_SEMANTIC_RC_EVIDENCE_ARTIFACT);
+    expect(result.status).toMatchObject({
+      requestedMode: "calibrated",
+      servedMode: "calibrated",
+      modelId: "kairn-semantic-rc-v185",
+      featureSchemaVersion: "evidence-features-v5"
+    });
+    expect(result.files[0]?.path).toBe(source.path);
   });
 
   it("fails closed to deterministic evidence order for an invalid local artifact", () => {

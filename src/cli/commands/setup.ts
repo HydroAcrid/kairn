@@ -22,7 +22,8 @@ export function registerSetupCommands(program: Command): void {
     .option("--yes", "confirm all planned repository and user-level configuration changes")
     .option("--dry-run", "show detected agents and intended changes without writing files")
     .option("--semantic-preview", "opt into local semantic shadow evaluation without changing served results")
-    .option("--offline", "do not download the semantic preview model")
+    .option("--semantic", "serve the local semantic release candidate (experimental)")
+    .option("--offline", "do not download the semantic model")
     .option("--no-index", "skip the initial safe repository index")
     .option("--json", "print JSON output")
     .action(async (options: {
@@ -31,6 +32,7 @@ export function registerSetupCommands(program: Command): void {
       yes?: boolean;
       dryRun?: boolean;
       semanticPreview?: boolean;
+      semantic?: boolean;
       offline?: boolean;
       index?: boolean;
       json?: boolean;
@@ -38,14 +40,16 @@ export function registerSetupCommands(program: Command): void {
       const plan = planKairnEnable({
         root: options.root,
         agents: options.agents,
-        semanticPreview: options.semanticPreview
+        semanticPreview: options.semanticPreview,
+        semanticServing: options.semantic
       });
+      const semanticRequested = Boolean(options.semanticPreview || options.semantic);
       if (options.dryRun) {
         const result = await enableKairn({
           plan,
           dryRun: true,
           index: options.index,
-          installModel: Boolean(options.semanticPreview) && !options.offline
+          installModel: semanticRequested && !options.offline
         });
         if (options.json) printJson(result);
         else process.stdout.write(formatEnableResult(result));
@@ -61,7 +65,7 @@ export function registerSetupCommands(program: Command): void {
           plan,
           dryRun: true,
           index: options.index,
-          installModel: Boolean(options.semanticPreview) && !options.offline
+          installModel: semanticRequested && !options.offline
         })));
         approved = await confirm({
           message: plan.writesUserConfig
@@ -74,7 +78,7 @@ export function registerSetupCommands(program: Command): void {
         plan,
         cancelled: !approved,
         index: options.index,
-        installModel: Boolean(options.semanticPreview) && !options.offline
+        installModel: semanticRequested && !options.offline
       });
       if (options.json) printJson(result);
       else process.stdout.write(formatEnableResult(result));

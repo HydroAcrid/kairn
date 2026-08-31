@@ -99,6 +99,24 @@ describe("source-first setup and enable", () => {
     }).semantic.mode).toBe("shadow");
   });
 
+  it("fails closed before setup writes when semantic serving has no local model", async () => {
+    const root = createFixtureRepo();
+    const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-serving-model-home-"));
+    const plan = planKairnEnable({
+      root,
+      agents: "codex",
+      pathValue: "",
+      homeDir,
+      semanticServing: true
+    });
+
+    expect(plan.semanticMode).toBe("semantic");
+    await expect(enableKairn({ plan, index: false, installModel: false }))
+      .rejects.toThrow(/requires the local model/i);
+    expect(fs.existsSync(path.join(root, ".kairn"))).toBe(false);
+    expect(fs.existsSync(path.join(root, ".codex"))).toBe(false);
+  });
+
   it("falls back to generic MCP guidance and still indexes when no supported client is detected", async () => {
     const root = createFixtureRepo();
     const instructionsPath = path.join(root, "AGENTS.md");

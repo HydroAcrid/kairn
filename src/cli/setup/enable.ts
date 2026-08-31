@@ -21,6 +21,7 @@ import { ensureKairnInternalStateExcluded } from "../helpers.js";
 
 export type EnableTarget = Exclude<SetupWizardTarget, "doctor">;
 export type EnableAgentStatus = "configured" | "already-configured" | "planned" | "skipped" | "action-required";
+export type EnableSemanticMode = "legacy" | "shadow" | "semantic";
 
 export type EnableAgent = {
   target: EnableTarget;
@@ -36,6 +37,8 @@ export type EnablePlan = {
   targets: EnableTarget[];
   agents: EnableAgent[];
   writesUserConfig: boolean;
+  semanticMode: EnableSemanticMode;
+  /** Compatibility field retained for existing JSON consumers. */
   semanticPreview: boolean;
   manualConfigs: Array<{ target: "generic"; clientConfig: Record<string, unknown> }>;
   semanticModel: ReturnType<typeof getSemanticModelState>;
@@ -68,9 +71,13 @@ export function planKairnEnable(input: {
   root: string;
   agents?: string | undefined;
   semanticPreview?: boolean | undefined;
+  semanticServing?: boolean | undefined;
   pathValue?: string | undefined;
   homeDir?: string | undefined;
 }): EnablePlan {
+  if (input.semanticPreview && input.semanticServing) {
+    throw new Error("Choose either semantic preview or semantic serving, not both.");
+  }
   const rootPath = path.resolve(input.root);
   const homeDir = input.homeDir ?? os.homedir();
   const explicitTargets = input.agents ? parseEnableTargets(input.agents) : undefined;
@@ -106,12 +113,18 @@ export function planKairnEnable(input: {
     homeDir
   });
   const semanticManifest = getSemanticModelManifest(DEFAULT_SEMANTIC_MODEL_ID);
+  const semanticMode: EnableSemanticMode = input.semanticServing
+    ? "semantic"
+    : input.semanticPreview
+      ? "shadow"
+      : "legacy";
   return {
     rootPath,
     ...(input.homeDir ? { homeDir } : {}),
     targets,
     agents,
     writesUserConfig: targets.includes("copilot-cli"),
+    semanticMode,
     semanticPreview: Boolean(input.semanticPreview),
     manualConfigs: targets.includes("generic")
       ? [{
@@ -126,7 +139,7 @@ export function planKairnEnable(input: {
       license: semanticManifest.license,
       upstreamRepository: semanticManifest.upstreamRepository,
       upstreamRevision: semanticManifest.upstreamRevision,
-      required: Boolean(input.semanticPreview) && semanticModel.status !== "ready"
+      required: semanticMode !== "legacy" && semanticModel.status !== "ready"
     }
   };
 }
@@ -149,6 +162,31 @@ export async function enableKairn(input: {
       deepIndexStarted: false,
       semanticModelInstalled: false
     };
+  }
+
+  // A serving opt-in must fail before writing integrations or repository
+  // configuration when its local model is unavailable. Shadow mode may still
+  // record an explicit fallback for diagnostics.
+  let semanticModel = input.plan.semanticModel;
+  let semanticModelInstalled = false;
+  let semanticModelError: string | undefined;
+  if (input.plan.semanticMode !== "legacy" && input.installModel && semanticModel.status !== "ready") {
+    try {
+      semanticModel = await installSemanticModel({
+        modelId: DEFAULT_SEMANTIC_MODEL_ID,
+        ...(input.plan.homeDir ? { homeDir: input.plan.homeDir } : {})
+      });
+      semanticModelInstalled = semanticModel.status === "ready";
+    } catch (error) {
+      semanticModelError = error instanceof Error ? error.message : String(error);
+    }
+  }
+  if (input.plan.semanticMode === "semantic" && semanticModel.status !== "ready") {
+    throw new Error(
+      semanticModelError
+        ? `Semantic serving model is unavailable: ${semanticModelError}`
+        : "Semantic serving requires the local model. Run kairn model install first or rerun kairn enable --semantic without --offline."
+    );
   }
 
   // Keep local runtime state out of Git dirtiness and freshness calculations
@@ -175,22 +213,8 @@ export async function enableKairn(input: {
   let doctor = setup?.doctor;
   let deepIndexStarted = false;
   let deepIndexLog: string | undefined;
-  let semanticModel = input.plan.semanticModel;
-  let semanticModelInstalled = false;
-  let semanticModelError: string | undefined;
-  if (input.plan.semanticPreview && input.installModel && semanticModel.status !== "ready") {
-    try {
-      semanticModel = await installSemanticModel({
-        modelId: DEFAULT_SEMANTIC_MODEL_ID,
-        ...(input.plan.homeDir ? { homeDir: input.plan.homeDir } : {})
-      });
-      semanticModelInstalled = semanticModel.status === "ready";
-    } catch (error) {
-      semanticModelError = error instanceof Error ? error.message : String(error);
-    }
-  }
   writeSemanticRetrieverConfig(input.plan.rootPath, {
-    mode: input.plan.semanticPreview ? "shadow" : "legacy",
+    mode: input.plan.semanticMode,
     modelId: DEFAULT_SEMANTIC_MODEL_ID
   });
   if (index) {
@@ -199,7 +223,7 @@ export async function enableKairn(input: {
     try {
       const existing = runtime.getIndexStatus();
       const hasFreshIndex = existing.fileCount > 0 && existing.freshness?.stale === false;
-      const semanticIndexRequired = input.plan.semanticPreview
+      const semanticIndexRequired = input.plan.semanticMode !== "legacy"
         && semanticModel.status === "ready"
         && existing.semanticEmbeddingCount === 0;
       const hasFreshFullIndex = hasFreshIndex
@@ -325,13 +349,17 @@ export function formatEnableResult(result: EnableResult): string {
     heading,
     `Root: ${result.rootPath}`,
     `Index: ${result.indexed ? `inventory ready (${result.indexMode})` : result.indexMode === "skip" ? "not changed" : "not built"}`,
-    `Candidate generator: ${result.semanticPreview ? "semantic preview (shadow; deterministic results served)" : "deterministic (default)"}`,
-    result.semanticPreview
+    `Candidate generator: ${result.semanticMode === "semantic"
+      ? "semantic release candidate (served; experimental)"
+      : result.semanticMode === "shadow"
+        ? "semantic preview (shadow; deterministic results served)"
+        : "deterministic (default)"}`,
+    result.semanticMode !== "legacy"
       ? `Semantic model: ${result.semanticModel.status}${result.semanticModelInstalled ? " (installed)" : ""}`
       : "Semantic model: not required",
-    result.semanticPreview && result.semanticModelDownload.required
+    result.semanticMode !== "legacy" && result.semanticModelDownload.required
       ? `Model download: ${result.semanticModelDownload.modelId}, ${(result.semanticModelDownload.bytes / 1024 / 1024).toFixed(1)} MB, ${result.semanticModelDownload.license}, ${result.semanticModelDownload.upstreamRepository}@${result.semanticModelDownload.upstreamRevision}`
-      : result.semanticPreview ? "Model download: not required" : "",
+      : result.semanticMode !== "legacy" ? "Model download: not required" : "",
     result.semanticModelError ? `Semantic model warning: ${result.semanticModelError}` : "",
     result.deepIndexStarted ? `Deep index: started in background${result.deepIndexLog ? ` (${result.deepIndexLog})` : ""}` : "",
     result.indexError ? `Index warning: ${result.indexError}` : "",
