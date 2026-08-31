@@ -5,6 +5,7 @@ import path from "node:path";
 import type {
   CodexPilotAttemptPlan,
   CodexPilotCondition,
+  CodexPilotKairnPin,
   CodexPilotPlan,
   CodexPilotProfile,
   CodexPilotStage,
@@ -13,6 +14,9 @@ import type {
   ExperimentTaskClass
 } from "../types.js";
 import { parseExperimentTask, validateExperimentPlan } from "./experimentPlan.js";
+import { BUNDLED_SEMANTIC_RC_EVIDENCE_ARTIFACT } from "../retrieval/evidenceModel.js";
+import { DEFAULT_SEMANTIC_MODEL_ID, getSemanticModelManifest } from "../semantic/modelRegistry.js";
+import { semanticModelManifestSha256 } from "../semantic/modelManager.js";
 
 export const CODEX_PILOT_CONDITIONS: CodexPilotCondition[] = ["vanilla_codex", "codex_kairn"];
 export const CODEX_PILOT_PIN = Object.freeze({
@@ -24,6 +28,17 @@ export const CODEX_PILOT_PIN = Object.freeze({
   serviceTier: "standard" as const,
   fastMode: false as const
 });
+export const CODEX_PILOT_SEMANTIC_RC_PIN: CodexPilotKairnPin = Object.freeze({
+  candidateMode: "semantic",
+  semanticModelId: DEFAULT_SEMANTIC_MODEL_ID,
+  semanticModelManifestSha256: semanticModelManifestSha256(
+    getSemanticModelManifest(DEFAULT_SEMANTIC_MODEL_ID)
+  ),
+  rankerMode: "calibrated",
+  rankerModelId: "kairn-semantic-rc-v185",
+  rankerArtifactChecksum: BUNDLED_SEMANTIC_RC_EVIDENCE_ARTIFACT.checksum,
+  featureSchemaVersion: "evidence-features-v5"
+});
 
 const LANGUAGES: ExperimentLanguage[] = ["python", "typescript", "go", "java", "cpp"];
 const TASK_CLASSES: ExperimentTaskClass[] = ["source_localization", "failure_first", "long_session"];
@@ -31,11 +46,14 @@ const TASK_CLASSES: ExperimentTaskClass[] = ["source_localization", "failure_fir
 export function loadCodexPilotPlan(planPath: string): CodexPilotPlan {
   const resolved = path.resolve(planPath);
   const root = asRecord(JSON.parse(fs.readFileSync(resolved, "utf8")), "Codex pilot plan");
+  const schemaVersion = stringValue(root.schemaVersion, "schemaVersion");
+  if (schemaVersion !== "codex-pilot.v1" && schemaVersion !== "codex-pilot.v2") {
+    throw new Error("schemaVersion must be codex-pilot.v1 or codex-pilot.v2");
+  }
   requireExactKeys(root, [
     "schemaVersion", "id", "name", "sealed", "profile", "lineageRegistry", "conditions",
-    "codex", "repeats", "timeoutMs", "tasks"
+    "codex", ...(schemaVersion === "codex-pilot.v2" ? ["kairn"] : []), "repeats", "timeoutMs", "tasks"
   ], "Codex pilot plan");
-  if (root.schemaVersion !== "codex-pilot.v1") throw new Error("schemaVersion must be codex-pilot.v1");
   if (root.sealed !== true) throw new Error("Codex pilot plan must declare sealed=true");
   const profile = stringValue(root.profile, "profile") as CodexPilotProfile;
   if (profile !== "smoke" && profile !== "pilot") throw new Error(`unsupported Codex pilot profile '${profile}'`);
@@ -51,6 +69,15 @@ export function loadCodexPilotPlan(planPath: string): CodexPilotPlan {
   requireExactKeys(codex, ["package", "version", "integrity", "model", "reasoningEffort", "serviceTier", "fastMode"], "codex");
   for (const [key, expected] of Object.entries(CODEX_PILOT_PIN)) {
     if (codex[key] !== expected) throw new Error(`codex.${key} must be pinned to ${String(expected)}`);
+  }
+  let kairn: CodexPilotKairnPin | undefined;
+  if (schemaVersion === "codex-pilot.v2") {
+    const candidate = asRecord(root.kairn, "kairn");
+    requireExactKeys(candidate, Object.keys(CODEX_PILOT_SEMANTIC_RC_PIN), "kairn");
+    for (const [key, expected] of Object.entries(CODEX_PILOT_SEMANTIC_RC_PIN)) {
+      if (candidate[key] !== expected) throw new Error(`kairn.${key} must be pinned to ${String(expected)}`);
+    }
+    kairn = CODEX_PILOT_SEMANTIC_RC_PIN;
   }
   const repeats = integerValue(root.repeats, "repeats");
   const timeoutMs = integerValue(root.timeoutMs, "timeoutMs");
@@ -72,7 +99,7 @@ export function loadCodexPilotPlan(planPath: string): CodexPilotPlan {
   validateCodexProfile({ profile, repeats, tasks });
   validateLineages(registryPath, profile, tasks.map((task) => task.repoUrl));
   return {
-    schemaVersion: "codex-pilot.v1",
+    schemaVersion,
     id: generalPlan.id,
     name: generalPlan.name,
     sealed: true,
@@ -80,6 +107,7 @@ export function loadCodexPilotPlan(planPath: string): CodexPilotPlan {
     lineageRegistry: registryPath,
     conditions,
     codex: CODEX_PILOT_PIN,
+    ...(kairn ? { kairn } : {}),
     repeats,
     timeoutMs,
     tasks

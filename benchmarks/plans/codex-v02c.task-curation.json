@@ -5,12 +5,12 @@
   "note": "This registry is intentionally non-runnable. A cell becomes sealed only after its public repository commit, Docker image digest, setup/failure behavior, production-source oracle, touch/scope/invariant gates, and offline verifier have been independently checked.",
   "smoke": [
     {
-      "id": "smoke-sentinel",
-      "status": "unsealed",
-      "repositoryLineageId": null,
-      "repoUrl": null,
-      "ref": null,
-      "taskPlan": null
+      "id": "semantic-rc-p-map-abort-cleanup",
+      "status": "blocked_docker_validation",
+      "repositoryLineageId": "https://github.com/sindresorhus/p-map",
+      "repoUrl": "https://github.com/sindresorhus/p-map.git",
+      "ref": "47bc82e569e962e190eb56242510709cfa5b805f",
+      "taskPlan": "codex-v02c.semantic-rc.smoke.candidate.json"
     }
   ],
   "pilot": [

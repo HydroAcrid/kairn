@@ -16,8 +16,14 @@ import type {
 import { sha256 } from "../utils/hash.js";
 import { estimateTokens } from "../utils/tokens.js";
 import { enableKairn, planKairnEnable } from "../cli/setup/enable.js";
+import { KairnRuntime } from "../runtime/KairnRuntime.js";
+import { getSemanticModelState } from "../semantic/modelManager.js";
 import { evaluateDiffScopes, evaluateSourceInvariants } from "./sourceValidation.js";
-import { buildCodexPilotSchedule, CODEX_PILOT_PIN, loadCodexPilotPlan } from "./codexPilotPlan.js";
+import {
+  buildCodexPilotSchedule,
+  CODEX_PILOT_PIN,
+  loadCodexPilotPlan
+} from "./codexPilotPlan.js";
 import {
   codexThreadId,
   emptyUsage,
@@ -83,7 +89,9 @@ export async function runCodexPilot(input: RunCodexPilotOptions): Promise<CodexP
   const planSha256 = sha256(fs.readFileSync(planPath));
   const kairnCommit = gitOutput(process.cwd(), ["rev-parse", "HEAD"]) || "uncommitted";
   const rankerModel = process.env.KAIRN_RANKER_MODEL?.trim();
-  const rankerModelSha256 = rankerModel && fs.existsSync(rankerModel) ? sha256(fs.readFileSync(rankerModel)) : "unconfigured";
+  const rankerModelSha256 = plan.kairn?.rankerArtifactChecksum ?? (
+    rankerModel && fs.existsSync(rankerModel) ? sha256(fs.readFileSync(rankerModel)) : "unconfigured"
+  );
   if (!dryRun && !fakeFixture) {
     validateLiveEnvironment({ plan, rankerModel, kairnCommit });
     verifyCodexBinary(codexCommand, codexHome);
@@ -164,6 +172,7 @@ export async function runCodexPilot(input: RunCodexPilotOptions): Promise<CodexP
     seed: input.seed,
     planSha256,
     codex: CODEX_PILOT_PIN,
+    ...(plan.kairn ? { kairn: plan.kairn } : {}),
     dryRun,
     expectedAttemptCount,
     completedAttemptCount: attempts.filter((attempt) => attempt.status !== "planned").length,
@@ -184,11 +193,31 @@ function validateLiveEnvironment(input: { plan: CodexPilotPlan; rankerModel?: st
   if (configured.length > 0) {
     throw new Error(`subscription-only Codex pilot refuses API credentials: ${configured.join(", ")}`);
   }
-  if (!input.rankerModel || !fs.existsSync(input.rankerModel)) {
-    throw new Error("live Codex pilot requires KAIRN_RANKER_MODEL pointing to the promoted local artifact");
-  }
-  if (process.env.KAIRN_RANKER_MODE !== "calibrated") {
-    throw new Error("live Codex pilot requires KAIRN_RANKER_MODE=calibrated");
+  if (input.plan.kairn) {
+    const forbiddenOverrides = [
+      "KAIRN_CANDIDATE_MODE",
+      "KAIRN_SEMANTIC_MODEL",
+      "KAIRN_SEMANTIC_MODEL_PATH",
+      "KAIRN_RANKER_MODE",
+      "KAIRN_RANKER_MODEL"
+    ].filter((key) => Boolean(process.env[key]?.trim()));
+    if (forbiddenOverrides.length > 0) {
+      throw new Error(`sealed semantic Codex pilot refuses runtime overrides: ${forbiddenOverrides.join(", ")}`);
+    }
+    const model = getSemanticModelState({ modelId: input.plan.kairn.semanticModelId });
+    if (
+      model.status !== "ready" ||
+      model.manifestSha256 !== input.plan.kairn.semanticModelManifestSha256
+    ) {
+      throw new Error("sealed semantic Codex pilot requires the checksummed local Jina model to be ready");
+    }
+  } else {
+    if (!input.rankerModel || !fs.existsSync(input.rankerModel)) {
+      throw new Error("live Codex pilot requires KAIRN_RANKER_MODEL pointing to the promoted local artifact");
+    }
+    if (process.env.KAIRN_RANKER_MODE !== "calibrated") {
+      throw new Error("live Codex pilot requires KAIRN_RANKER_MODE=calibrated");
+    }
   }
   if (input.kairnCommit === "uncommitted" || gitOutput(process.cwd(), ["status", "--porcelain"])) {
     throw new Error("live Codex pilot requires a clean, committed Kairn checkout so the campaign can be frozen");
@@ -229,7 +258,7 @@ async function runLiveAttempt(input: {
     if (initialFailure && initialFailure.status === 0) throw new Error("failure_first precondition unexpectedly passed");
 
     let cleanupKairn = () => {};
-    if (input.attempt.condition === "codex_kairn") cleanupKairn = await configureKairn(workspace);
+    if (input.attempt.condition === "codex_kairn") cleanupKairn = await configureKairn(workspace, input.plan);
     else assertVanillaHasNoKairnConfig(workspace);
     const tracePrefix = path.join(rawDir, "strace");
     const turns = taskPrompts(input.task, initialFailure?.output);
@@ -365,7 +394,7 @@ async function runLiveAttempt(input: {
   }
 }
 
-async function configureKairn(workspace: string): Promise<() => void> {
+async function configureKairn(workspace: string, plan: CodexPilotPlan): Promise<() => void> {
   const snapshots = ["config.toml", "hooks.json"].map((name) => {
     const file = path.join(workspace, ".codex", name);
     return { file, existed: fs.existsSync(file), content: fs.existsSync(file) ? fs.readFileSync(file) : undefined };
@@ -374,11 +403,31 @@ async function configureKairn(workspace: string): Promise<() => void> {
   process.env.KAIRN_DISABLE_BACKGROUND_INDEX = "1";
   try {
     const result = await enableKairn({
-      plan: planKairnEnable({ root: workspace, agents: "codex" }),
-      index: true
+      plan: planKairnEnable({
+        root: workspace,
+        agents: "codex",
+        semanticServing: plan.kairn?.candidateMode === "semantic"
+      }),
+      index: true,
+      installModel: false
     });
     if (!result.indexed || result.agents.some((agent) => agent.target === "codex" && agent.status === "action-required")) {
       throw new Error(`Kairn setup failed: ${result.indexError ?? "Codex integration was not configured"}`);
+    }
+    if (plan.kairn) {
+      if (result.semanticMode !== "semantic" || result.semanticModel.status !== "ready") {
+        throw new Error("Kairn semantic release candidate was not configured as sealed");
+      }
+      const runtime = new KairnRuntime(workspace);
+      try {
+        await runtime.init();
+        const status = runtime.getIndexStatus();
+        if (status.semanticEmbeddingCount === 0) {
+          throw new Error("Kairn semantic index contains no embeddings after release-candidate setup");
+        }
+      } finally {
+        runtime.close();
+      }
     }
   } finally {
     if (previous === undefined) delete process.env.KAIRN_DISABLE_BACKGROUND_INDEX;
@@ -817,6 +866,7 @@ function buildCampaignManifest(input: {
     planSha256: input.planSha256,
     seed: input.input.seed,
     codex: CODEX_PILOT_PIN,
+    ...(input.plan.kairn ? { kairn: input.plan.kairn } : {}),
     kairnCommit: input.state.kairnCommit,
     rankerModelSha256: input.state.rankerModelSha256,
     subscriptionAuthOnly: true,
@@ -876,6 +926,7 @@ function buildPublicEvidence(report: CodexPilotReport): Record<string, unknown> 
     model: CODEX_PILOT_PIN.model,
     codexVersion: CODEX_PILOT_PIN.version,
     codexPackageIntegrity: CODEX_PILOT_PIN.integrity,
+    ...(report.kairn ? { kairn: report.kairn } : {}),
     reasoningEffort: CODEX_PILOT_PIN.reasoningEffort,
     serviceTier: CODEX_PILOT_PIN.serviceTier,
     fastMode: CODEX_PILOT_PIN.fastMode,

@@ -36,9 +36,26 @@ explicit noise pattern, and offline setup/verifier commands. The lineage
 registry must give smoke repositories `live_smoke` and pilot repositories
 `pilot`; corpus lineages cannot be reused.
 
+`codex-pilot.v2` adds a sealed Kairn identity for the semantic release
+candidate. It pins semantic candidate mode, the Jina model manifest, calibrated
+ranker mode, the bundled v185 checksum, and `evidence-features-v5`. The harness
+rejects environment overrides, verifies the installed model receipt, builds a
+real semantic index before launching Codex, and records the full identity in
+the campaign and public-evidence manifests. A v1 plan cannot accidentally be
+reported as a semantic release-candidate run.
+
 The non-runnable curation registry is
 `benchmarks/plans/codex-v02c.task-curation.json`. A `.sealed.json` plan must not
 be created until its repository and verifier have actually been checked.
+
+The current semantic smoke candidate is
+`benchmarks/plans/codex-v02c.semantic-rc.smoke.candidate.json`. Its immutable
+`sindresorhus/p-map` checkout and already-aborted-signal verifier were checked
+locally: the verifier fails on the sealed source commit and passes after the
+minimal production fix. It remains `sealed: false` because Docker Desktop was
+not available to WSL during the 2026-08-31 preflight, so the digest-pinned
+offline container has not yet been verified. This is an infrastructure blocker
+and produces no effectiveness result.
 
 ## Staged execution
 

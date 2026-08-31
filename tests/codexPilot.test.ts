@@ -5,7 +5,12 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { runCodexPilot } from "../src/bench/codexPilot.js";
-import { buildCodexPilotSchedule, CODEX_PILOT_PIN, loadCodexPilotPlan } from "../src/bench/codexPilotPlan.js";
+import {
+  buildCodexPilotSchedule,
+  CODEX_PILOT_PIN,
+  CODEX_PILOT_SEMANTIC_RC_PIN,
+  loadCodexPilotPlan
+} from "../src/bench/codexPilotPlan.js";
 import { codexThreadId, observedCodexUsage, parseCodexJsonl } from "../src/bench/codexPilotUsage.js";
 
 describe("ecological Codex pilot", () => {
@@ -25,7 +30,8 @@ describe("ecological Codex pilot", () => {
       status: "curation"
     });
     expect(registry.smoke).toHaveLength(1);
-    expect(registry.smoke.every((task) => task.status === "unsealed")).toBe(true);
+    expect(registry.smoke.every((task) => task.status !== "sealed")).toBe(true);
+    expect(registry.smoke[0]?.status).toBe("blocked_docker_validation");
     expect(registry.pilot).toHaveLength(15);
     expect(new Set(registry.pilot.map((task) => `${task.language}/${task.scenario}`)).size).toBe(15);
   });
@@ -106,9 +112,54 @@ describe("ecological Codex pilot", () => {
     const planPath = writeSmokePlan(temporary, "pilot");
     expect(() => loadCodexPilotPlan(planPath)).toThrow(/role must be live_smoke/);
   });
+
+  it("pins the complete semantic serving identity in v2 plans", () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-codex-semantic-plan-"));
+    const plan = loadCodexPilotPlan(writeSmokePlan(temporary, "live_smoke", true));
+
+    expect(plan.schemaVersion).toBe("codex-pilot.v2");
+    expect(plan.kairn).toEqual(CODEX_PILOT_SEMANTIC_RC_PIN);
+
+    const planPath = path.join(temporary, "smoke.json");
+    const tampered = JSON.parse(fs.readFileSync(planPath, "utf8")) as {
+      kairn: { rankerArtifactChecksum: string };
+    };
+    tampered.kairn.rankerArtifactChecksum = "0".repeat(64);
+    fs.writeFileSync(planPath, JSON.stringify(tampered), "utf8");
+    expect(() => loadCodexPilotPlan(planPath)).toThrow(/rankerArtifactChecksum must be pinned/);
+  });
+
+  it("keeps the checked-in semantic smoke candidate valid but unsealed until Docker verification", () => {
+    const candidate = JSON.parse(fs.readFileSync(
+      path.resolve("benchmarks/plans/codex-v02c.semantic-rc.smoke.candidate.json"),
+      "utf8"
+    )) as Record<string, unknown> & { sealed: boolean; lineageRegistry: string };
+    expect(candidate).toMatchObject({
+      schemaVersion: "codex-pilot.v2",
+      sealed: false,
+      kairn: CODEX_PILOT_SEMANTIC_RC_PIN
+    });
+
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-codex-checked-in-candidate-"));
+    fs.writeFileSync(path.join(temporary, "lineages.json"), JSON.stringify({
+      schemaVersion: "lineage-registry.v1",
+      lineages: [{ id: "https://github.com/sindresorhus/p-map", role: "live_smoke" }]
+    }), "utf8");
+    fs.writeFileSync(path.join(temporary, "sealed.json"), JSON.stringify({
+      ...candidate,
+      sealed: true,
+      lineageRegistry: "lineages.json"
+    }), "utf8");
+
+    expect(loadCodexPilotPlan(path.join(temporary, "sealed.json"))).toMatchObject({
+      schemaVersion: "codex-pilot.v2",
+      sealed: true,
+      kairn: CODEX_PILOT_SEMANTIC_RC_PIN
+    });
+  });
 });
 
-function writeSmokePlan(directory: string, lineageRole = "live_smoke"): string {
+function writeSmokePlan(directory: string, lineageRole = "live_smoke", semantic = false): string {
   const repoUrl = "https://github.com/example/public-python-repo";
   fs.writeFileSync(path.join(directory, "lineages.json"), JSON.stringify({
     schemaVersion: "lineage-registry.v1",
@@ -116,7 +167,7 @@ function writeSmokePlan(directory: string, lineageRole = "live_smoke"): string {
   }), "utf8");
   const planPath = path.join(directory, "smoke.json");
   fs.writeFileSync(planPath, JSON.stringify({
-    schemaVersion: "codex-pilot.v1",
+    schemaVersion: semantic ? "codex-pilot.v2" : "codex-pilot.v1",
     id: "codex-v02c-smoke",
     name: "Kairn v0.2C Codex smoke",
     sealed: true,
@@ -124,6 +175,7 @@ function writeSmokePlan(directory: string, lineageRole = "live_smoke"): string {
     lineageRegistry: "lineages.json",
     conditions: ["vanilla_codex", "codex_kairn"],
     codex: CODEX_PILOT_PIN,
+    ...(semantic ? { kairn: CODEX_PILOT_SEMANTIC_RC_PIN } : {}),
     repeats: 1,
     timeoutMs: 300000,
     tasks: [{

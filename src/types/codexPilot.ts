@@ -16,8 +16,18 @@ export type CodexPilotPin = {
   fastMode: false;
 };
 
+export type CodexPilotKairnPin = {
+  candidateMode: "semantic";
+  semanticModelId: "jina-code-v2-q8";
+  semanticModelManifestSha256: string;
+  rankerMode: "calibrated";
+  rankerModelId: "kairn-semantic-rc-v185";
+  rankerArtifactChecksum: string;
+  featureSchemaVersion: "evidence-features-v5";
+};
+
 export type CodexPilotPlan = {
-  schemaVersion: "codex-pilot.v1";
+  schemaVersion: "codex-pilot.v1" | "codex-pilot.v2";
   id: string;
   name: string;
   sealed: true;
@@ -25,6 +35,7 @@ export type CodexPilotPlan = {
   lineageRegistry: string;
   conditions: CodexPilotCondition[];
   codex: CodexPilotPin;
+  kairn?: CodexPilotKairnPin | undefined;
   repeats: number;
   timeoutMs: number;
   tasks: ExperimentTask[];
@@ -98,6 +109,7 @@ export type CodexPilotReport = {
   seed: number;
   planSha256: string;
   codex: CodexPilotPin;
+  kairn?: CodexPilotKairnPin | undefined;
   dryRun: boolean;
   expectedAttemptCount: number;
   completedAttemptCount: number;
