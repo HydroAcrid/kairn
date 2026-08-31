@@ -1,0 +1,13 @@
+diff --git a/src/structlog/processors.py b/src/structlog/processors.py
+index 8eefaec..afaf3ec 100644
+--- a/src/structlog/processors.py
++++ b/src/structlog/processors.py
+@@ -174,7 +174,7 @@ class LogfmtRenderer:
+                 continue
+ 
+             if isinstance(value, bool):
+-                if self.bool_as_flag and value:
++                if self.bool_as_flag:
+                     elements.append(f"{key}")
+                     continue
+                 value = "true" if value else "false"

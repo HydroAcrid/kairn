@@ -1,8 +1,8 @@
 {
   "schemaVersion": "codex-pilot-task-curation.v1",
   "campaignId": "codex-v02c",
-  "status": "curation",
-  "note": "This registry is intentionally non-runnable. A cell becomes sealed only after its public repository commit, Docker image digest, setup/failure behavior, production-source oracle, touch/scope/invariant gates, and offline verifier have been independently checked.",
+  "status": "sealed",
+  "note": "This registry remains non-runnable; the linked sealed plans are authoritative. Every listed cell has a pinned public repository commit and Docker image, independently checked broken/fixed behavior, a production-source oracle, touch/scope/invariant gates, and an offline verifier.",
   "smoke": [
     {
       "id": "semantic-rc-p-map-abort-cleanup",
@@ -18,151 +18,151 @@
       "id": "pilot-python-source-localization",
       "language": "python",
       "scenario": "source_localization",
-      "status": "unsealed",
-      "repositoryLineageId": null,
-      "repoUrl": null,
-      "ref": null,
-      "taskPlan": null
+      "status": "sealed",
+      "repositoryLineageId": "https://github.com/pallets/itsdangerous",
+      "repoUrl": "https://github.com/pallets/itsdangerous.git",
+      "ref": "672971d66a2ef9f85151e53283113f33d642dabd",
+      "taskPlan": "codex-v02c.pilot.sealed.json"
     },
     {
       "id": "pilot-python-failure-first",
       "language": "python",
       "scenario": "failure_first",
-      "status": "unsealed",
-      "repositoryLineageId": null,
-      "repoUrl": null,
-      "ref": null,
-      "taskPlan": null
+      "status": "sealed",
+      "repositoryLineageId": "https://github.com/python-attrs/attrs",
+      "repoUrl": "https://github.com/python-attrs/attrs.git",
+      "ref": "764bf92a1c96abe4615b59f3e5a7b738b0340a94",
+      "taskPlan": "codex-v02c.pilot.sealed.json"
     },
     {
       "id": "pilot-python-long-session",
       "language": "python",
       "scenario": "long_session",
-      "status": "unsealed",
-      "repositoryLineageId": null,
-      "repoUrl": null,
-      "ref": null,
-      "taskPlan": null
+      "status": "sealed",
+      "repositoryLineageId": "https://github.com/hynek/structlog",
+      "repoUrl": "https://github.com/hynek/structlog.git",
+      "ref": "ab24a2678ca68f3115d71e55eb9dbf12d9d2dea7",
+      "taskPlan": "codex-v02c.pilot.sealed.json"
     },
     {
       "id": "pilot-typescript-source-localization",
       "language": "typescript",
       "scenario": "source_localization",
-      "status": "unsealed",
-      "repositoryLineageId": null,
-      "repoUrl": null,
-      "ref": null,
-      "taskPlan": null
+      "status": "sealed",
+      "repositoryLineageId": "https://github.com/ai/nanoid",
+      "repoUrl": "https://github.com/ai/nanoid.git",
+      "ref": "07a39d62d84c21af5046fe6b2ef7b3e36ee557db",
+      "taskPlan": "codex-v02c.pilot.sealed.json"
     },
     {
       "id": "pilot-typescript-failure-first",
       "language": "typescript",
       "scenario": "failure_first",
-      "status": "unsealed",
-      "repositoryLineageId": null,
-      "repoUrl": null,
-      "ref": null,
-      "taskPlan": null
+      "status": "sealed",
+      "repositoryLineageId": "https://github.com/sindresorhus/yocto-queue",
+      "repoUrl": "https://github.com/sindresorhus/yocto-queue.git",
+      "ref": "b07eac099753833b29d06c614149904445739776",
+      "taskPlan": "codex-v02c.pilot.sealed.json"
     },
     {
       "id": "pilot-typescript-long-session",
       "language": "typescript",
       "scenario": "long_session",
-      "status": "unsealed",
-      "repositoryLineageId": null,
-      "repoUrl": null,
-      "ref": null,
-      "taskPlan": null
+      "status": "sealed",
+      "repositoryLineageId": "https://github.com/jonschlinkert/kind-of",
+      "repoUrl": "https://github.com/jonschlinkert/kind-of.git",
+      "ref": "3c7e8fd86094cfdb1b1bd048a39f699161da62e4",
+      "taskPlan": "codex-v02c.pilot.sealed.json"
     },
     {
       "id": "pilot-go-source-localization",
       "language": "go",
       "scenario": "source_localization",
-      "status": "unsealed",
-      "repositoryLineageId": null,
-      "repoUrl": null,
-      "ref": null,
-      "taskPlan": null
+      "status": "sealed",
+      "repositoryLineageId": "https://github.com/google/uuid",
+      "repoUrl": "https://github.com/google/uuid.git",
+      "ref": "2d3c2a9cc518326daf99a383f07c4d3c44317e4d",
+      "taskPlan": "codex-v02c.pilot.sealed.json"
     },
     {
       "id": "pilot-go-failure-first",
       "language": "go",
       "scenario": "failure_first",
-      "status": "unsealed",
-      "repositoryLineageId": null,
-      "repoUrl": null,
-      "ref": null,
-      "taskPlan": null
+      "status": "sealed",
+      "repositoryLineageId": "https://github.com/go-chi/chi",
+      "repoUrl": "https://github.com/go-chi/chi.git",
+      "ref": "ae6be7469132cf471ca099d8c7bda4010c4ff7b2",
+      "taskPlan": "codex-v02c.pilot.sealed.json"
     },
     {
       "id": "pilot-go-long-session",
       "language": "go",
       "scenario": "long_session",
-      "status": "unsealed",
-      "repositoryLineageId": null,
-      "repoUrl": null,
-      "ref": null,
-      "taskPlan": null
+      "status": "sealed",
+      "repositoryLineageId": "https://github.com/pkg/errors",
+      "repoUrl": "https://github.com/pkg/errors.git",
+      "ref": "87f8819acf6dc28bf5d3c14b334268236d686f48",
+      "taskPlan": "codex-v02c.pilot.sealed.json"
     },
     {
       "id": "pilot-java-source-localization",
       "language": "java",
       "scenario": "source_localization",
-      "status": "unsealed",
-      "repositoryLineageId": null,
-      "repoUrl": null,
-      "ref": null,
-      "taskPlan": null
+      "status": "sealed",
+      "repositoryLineageId": "https://github.com/stleary/JSON-java",
+      "repoUrl": "https://github.com/stleary/JSON-java.git",
+      "ref": "4f859fdf3b5669894c5ed8a305ee5cd5f1fe2b7a",
+      "taskPlan": "codex-v02c.pilot.sealed.json"
     },
     {
       "id": "pilot-java-failure-first",
       "language": "java",
       "scenario": "failure_first",
-      "status": "unsealed",
-      "repositoryLineageId": null,
-      "repoUrl": null,
-      "ref": null,
-      "taskPlan": null
+      "status": "sealed",
+      "repositoryLineageId": "https://github.com/TheAlgorithms/Java",
+      "repoUrl": "https://github.com/TheAlgorithms/Java.git",
+      "ref": "9a13ce00c4faedc02b2a04670ea9ef4729b70b2c",
+      "taskPlan": "codex-v02c.pilot.sealed.json"
     },
     {
       "id": "pilot-java-long-session",
       "language": "java",
       "scenario": "long_session",
-      "status": "unsealed",
-      "repositoryLineageId": null,
-      "repoUrl": null,
-      "ref": null,
-      "taskPlan": null
+      "status": "sealed",
+      "repositoryLineageId": "https://github.com/apache/commons-codec",
+      "repoUrl": "https://github.com/apache/commons-codec.git",
+      "ref": "20a5d22bc05933e2ff7a8f2cb3bce5cee8db64c1",
+      "taskPlan": "codex-v02c.pilot.sealed.json"
     },
     {
       "id": "pilot-cpp-source-localization",
       "language": "cpp",
       "scenario": "source_localization",
-      "status": "unsealed",
-      "repositoryLineageId": null,
-      "repoUrl": null,
-      "ref": null,
-      "taskPlan": null
+      "status": "sealed",
+      "repositoryLineageId": "https://github.com/gabime/spdlog",
+      "repoUrl": "https://github.com/gabime/spdlog.git",
+      "ref": "f5f173a1a57d0e2e0115f2ed71ee7ea316516853",
+      "taskPlan": "codex-v02c.pilot.sealed.json"
     },
     {
       "id": "pilot-cpp-failure-first",
       "language": "cpp",
       "scenario": "failure_first",
-      "status": "unsealed",
-      "repositoryLineageId": null,
-      "repoUrl": null,
-      "ref": null,
-      "taskPlan": null
+      "status": "sealed",
+      "repositoryLineageId": "https://github.com/jarro2783/cxxopts",
+      "repoUrl": "https://github.com/jarro2783/cxxopts.git",
+      "ref": "b6135315a54deb2b556219906eda8346f69bf703",
+      "taskPlan": "codex-v02c.pilot.sealed.json"
     },
     {
       "id": "pilot-cpp-long-session",
       "language": "cpp",
       "scenario": "long_session",
-      "status": "unsealed",
-      "repositoryLineageId": null,
-      "repoUrl": null,
-      "ref": null,
-      "taskPlan": null
+      "status": "sealed",
+      "repositoryLineageId": "https://github.com/Neargye/magic_enum",
+      "repoUrl": "https://github.com/Neargye/magic_enum.git",
+      "ref": "a99f69495f48e8dff89b14b40a233163248c38c4",
+      "taskPlan": "codex-v02c.pilot.sealed.json"
     }
   ]
 }

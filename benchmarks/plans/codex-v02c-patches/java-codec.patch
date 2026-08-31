@@ -1,0 +1,39 @@
+diff --git a/src/main/java/org/apache/commons/codec/binary/StringUtils.java b/src/main/java/org/apache/commons/codec/binary/StringUtils.java
+index 717a10c..f18284f 100644
+--- a/src/main/java/org/apache/commons/codec/binary/StringUtils.java
++++ b/src/main/java/org/apache/commons/codec/binary/StringUtils.java
+@@ -79,7 +79,7 @@ public class StringUtils {
+         if (cs1 instanceof String && cs2 instanceof String) {
+             return cs1.equals(cs2);
+         }
+-        return cs1.length() == cs2.length() && CharSequenceUtils.regionMatches(cs1, false, 0, cs2, 0, cs1.length());
++        return cs1.length() == cs2.length() && CharSequenceUtils.regionMatches(cs1, true, 0, cs2, 0, cs1.length());
+     }
+ 
+     /**
+diff --git a/.kairn/pilot/Probe.java b/.kairn/pilot/Probe.java
+new file mode 100644
+--- /dev/null
++++ b/.kairn/pilot/Probe.java
+@@ -0,0 +1,21 @@
++import org.apache.commons.codec.binary.StringUtils;
++
++public final class Probe {
++    private static final class Sequence implements CharSequence {
++        private final String value;
++        private Sequence(String value) { this.value = value; }
++        public int length() { return value.length(); }
++        public char charAt(int index) { return value.charAt(index); }
++        public CharSequence subSequence(int start, int end) { return value.subSequence(start, end); }
++        public String toString() { return value; }
++    }
++
++    public static void main(String[] args) {
++        if (StringUtils.equals(new Sequence("Token"), new Sequence("token"))) {
++            throw new AssertionError("comparison became case-insensitive");
++        }
++        if (!StringUtils.equals(new Sequence("Token"), new Sequence("Token"))) {
++            throw new AssertionError("equal custom sequences did not match");
++        }
++    }
++}

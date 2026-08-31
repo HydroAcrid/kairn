@@ -1,0 +1,13 @@
+diff --git a/index.js b/index.js
+index 627ed53..3e600c8 100644
+--- a/index.js
++++ b/index.js
+@@ -45,7 +45,7 @@ export default class Queue {
+ 		this.#size--;
+ 
+ 		// Clean up tail reference when queue becomes empty
+-		if (!this.#head) {
++        if (this.#head) {
+ 			this.#tail = undefined;
+ 		}
+ 

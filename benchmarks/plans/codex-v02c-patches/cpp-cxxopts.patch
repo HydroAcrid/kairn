@@ -1,0 +1,26 @@
+diff --git a/include/cxxopts.hpp b/include/cxxopts.hpp
+index 749a4b9..a9413f9 100644
+--- a/include/cxxopts.hpp
++++ b/include/cxxopts.hpp
+@@ -898,7 +898,7 @@ inline bool IsFalseText(const std::string &text)
+   static const std::basic_regex<char> falsy_matcher(falsy_pattern);
+   std::smatch result;
+   std::regex_match(text, result, falsy_matcher);
+-  return !result.empty();
++  return result.empty();
+ }
+ 
+ // Gets the option names specified via a single, comma-separated string,
+diff --git a/.kairn/pilot/probe.cpp b/.kairn/pilot/probe.cpp
+new file mode 100644
+--- /dev/null
++++ b/.kairn/pilot/probe.cpp
+@@ -0,0 +1,8 @@
++#include <cassert>
++#include "cxxopts.hpp"
++
++int main() {
++    assert(cxxopts::values::parser_tool::IsFalseText("false"));
++    assert(cxxopts::values::parser_tool::IsFalseText("0"));
++    assert(!cxxopts::values::parser_tool::IsFalseText("not-a-bool"));
++}

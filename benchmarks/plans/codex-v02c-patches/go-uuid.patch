@@ -1,0 +1,13 @@
+diff --git a/util.go b/util.go
+index de4bfb1..0fd168b 100644
+--- a/util.go
++++ b/util.go
+@@ -40,7 +40,7 @@ var xvalues = [256]byte{
+ func xtob(x1, x2 byte) (byte, bool) {
+ 	b1 := xvalues[x1]
+ 	b2 := xvalues[x2]
+-	return (b1 << 4) | b2, b1 != 255 && b2 != 255
++	return (b1 << 4) | b2, b1 != 255 || b2 != 255
+ }
+ 
+ // Compare returns an integer comparing two uuids lexicographically. The result will be 0 if a == b, -1 if a < b, and +1 if a > b.

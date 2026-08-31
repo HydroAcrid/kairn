@@ -559,3 +559,25 @@ That smoke also showed that the first-content timers began before cloning and
 index setup. Token and file-access results remain valid, but those latency
 values are excluded. Subsequent reports record preparation, Kairn setup, and
 agent-run time separately, with time-to-source starting only when Codex begins.
+
+## Fresh cross-language pilot seal
+
+The next semantic gate is now sealed as `codex-v02c.pilot.sealed.json`: 15
+fresh public repository lineages, one for every Python, TypeScript, Go, Java,
+and C++ combination with source localization, failure-first debugging, and a
+three-turn session. None of the 15 lineages were used in the ranker-development
+cohort. Each task pins an immutable repository commit and container digest,
+applies one general behavioral regression, preregisters the required production
+source and diff/invariant gates, and verifies offline.
+
+Before sealing, every task passed both fixture directions in its pinned
+container: the seeded checkout failed its focused verifier, while restoring the
+production behavior passed. The checked-in plan parses to exactly 30 paired
+attempts for the first-repeat gate and 90 attempts for the full three-repeat
+ecological pilot. The first-repeat gate must complete with valid traces and
+quality-passing pairs before the remaining repeats may run.
+
+This does not create a public effectiveness claim. It creates the fresh,
+balanced test needed to measure one. Public language stays unchanged until the
+repeated pilot can report observed token deltas, required-source recall,
+verification, harmful assists, noise, and negative results together.

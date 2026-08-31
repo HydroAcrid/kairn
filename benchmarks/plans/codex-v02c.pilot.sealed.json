@@ -1,0 +1,376 @@
+{
+  "schemaVersion": "codex-pilot.v2",
+  "id": "codex-v02c-semantic-pilot",
+  "name": "Kairn v0.2C semantic cross-language pilot",
+  "sealed": true,
+  "profile": "pilot",
+  "lineageRegistry": "codex-v02c.pilot.lineages.json",
+  "conditions": ["vanilla_codex", "codex_kairn"],
+  "codex": {
+    "package": "@openai/codex",
+    "version": "0.145.0",
+    "integrity": "sha512-/PSPSFujjjmiyVFvG2yu/grOFhsWdokTH8t2KGWhXSo/M5n/dIDsnbsnO82/7bLtIoDuzQf7ATBUMWqPWQINlQ==",
+    "model": "gpt-5.6-sol",
+    "reasoningEffort": "medium",
+    "serviceTier": "standard",
+    "fastMode": false
+  },
+  "kairn": {
+    "candidateMode": "semantic",
+    "semanticModelId": "jina-code-v2-q8",
+    "semanticModelManifestSha256": "d36c6ed084986e362004c43ddca67dabf5ef281617882eed9ee0e4b7dca999c0",
+    "rankerMode": "calibrated",
+    "rankerModelId": "kairn-semantic-rc-v185",
+    "rankerArtifactChecksum": "642aeadca7e66ef6d44de7b1f1c9a76fe881ff023461589995fd6b52f89f5bad",
+    "featureSchemaVersion": "evidence-features-v5"
+  },
+  "repeats": 3,
+  "timeoutMs": 600000,
+  "tasks": [
+    {
+      "id": "python-itsdangerous-base64-padding",
+      "repoUrl": "https://github.com/pallets/itsdangerous.git",
+      "ref": "672971d66a2ef9f85151e53283113f33d642dabd",
+      "publicRepo": true,
+      "language": "python",
+      "taskClass": "source_localization",
+      "prompt": "Fix URL-safe base64 decoding so valid unpadded inputs of every legal length decode correctly. Preserve the existing bytes/string handling and error behavior. Modify production source and verify the repair.",
+      "requiredSourceFiles": ["src/itsdangerous/encoding.py"],
+      "allowedSupportFiles": ["tests/test_itsdangerous/test_encoding.py"],
+      "explicitNoisePatterns": ["README.md", "docs/**", ".github/**"],
+      "requiredTouchedFiles": ["src/itsdangerous/encoding.py"],
+      "sourceInvariants": [{ "file": "src/itsdangerous/encoding.py", "requiredPresent": ["string += b\"=\" * (-len(string) % 4)"] }],
+      "allowedDiffScopes": [
+        { "file": "src/itsdangerous/encoding.py", "allowWholeFile": true },
+        { "file": "tests/test_itsdangerous/test_encoding.py", "allowWholeFile": true }
+      ],
+      "setupPatchFile": "codex-v02c-patches/python-itsdangerous.patch",
+      "sandboxImage": "docker.io/library/python@sha256:09f7da3bc104798d0afb40bc08d23ab2da20a76130cec1f2ef170848f5d85217",
+      "verificationCommand": "PYTHONPATH=src /usr/local/bin/python -c \"from itsdangerous.encoding import base64_decode; assert base64_decode('YQ') == b'a'\""
+    },
+    {
+      "id": "python-attrs-case-insensitive-bool",
+      "repoUrl": "https://github.com/python-attrs/attrs.git",
+      "ref": "764bf92a1c96abe4615b59f3e5a7b738b0340a94",
+      "publicRepo": true,
+      "language": "python",
+      "taskClass": "failure_first",
+      "prompt": "The preregistered check shows that uppercase textual booleans are rejected. Restore case-insensitive conversion without changing accepted non-string values. Modify production source and verify the repair.",
+      "requiredSourceFiles": ["src/attr/converters.py"],
+      "allowedSupportFiles": ["tests/test_converters.py"],
+      "explicitNoisePatterns": ["README.md", "docs/**", ".github/**"],
+      "requiredTouchedFiles": ["src/attr/converters.py"],
+      "sourceInvariants": [{ "file": "src/attr/converters.py", "requiredPresent": ["val = val.lower()"] }],
+      "allowedDiffScopes": [
+        { "file": "src/attr/converters.py", "allowWholeFile": true },
+        { "file": "tests/test_converters.py", "allowWholeFile": true }
+      ],
+      "setupPatchFile": "codex-v02c-patches/python-attrs.patch",
+      "sandboxImage": "docker.io/library/python@sha256:09f7da3bc104798d0afb40bc08d23ab2da20a76130cec1f2ef170848f5d85217",
+      "initialFailureCommand": "PYTHONPATH=src /usr/local/bin/python -c \"from attr.converters import to_bool; assert to_bool('TRUE') is True\"",
+      "verificationCommand": "PYTHONPATH=src /usr/local/bin/python -c \"from attr.converters import to_bool; assert to_bool('TRUE') is True\""
+    },
+    {
+      "id": "python-structlog-false-flag-rendering",
+      "repoUrl": "https://github.com/hynek/structlog.git",
+      "ref": "ab24a2678ca68f3115d71e55eb9dbf12d9d2dea7",
+      "publicRepo": true,
+      "language": "python",
+      "taskClass": "long_session",
+      "prompt": "Diagnose why false boolean values disappear when flag-style logfmt rendering is enabled.",
+      "turns": [
+        { "id": "diagnose", "prompt": "Diagnose why false boolean values disappear when flag-style logfmt rendering is enabled. Identify the production behavior responsible, but do not edit yet." },
+        { "id": "repair", "prompt": "Implement the smallest production repair so true values may remain bare flags while false values render explicitly. Preserve other rendering behavior." },
+        { "id": "verify", "prompt": "Verify the repair against both true and false boolean cases and fix any remaining issue. Finish with the working tree ready for review." }
+      ],
+      "requiredSourceFiles": ["src/structlog/processors.py"],
+      "allowedSupportFiles": ["tests/processors/test_renderers.py"],
+      "explicitNoisePatterns": ["README.md", "docs/**", ".github/**"],
+      "requiredTouchedFiles": ["src/structlog/processors.py"],
+      "sourceInvariants": [{ "file": "src/structlog/processors.py", "requiredPresent": ["if self.bool_as_flag and value:"] }],
+      "allowedDiffScopes": [
+        { "file": "src/structlog/processors.py", "allowWholeFile": true },
+        { "file": "tests/processors/test_renderers.py", "allowWholeFile": true }
+      ],
+      "setupPatchFile": "codex-v02c-patches/python-structlog.patch",
+      "sandboxImage": "docker.io/library/python@sha256:09f7da3bc104798d0afb40bc08d23ab2da20a76130cec1f2ef170848f5d85217",
+      "verificationCommand": "PYTHONPATH=src /usr/local/bin/python -c \"from structlog.processors import LogfmtRenderer; assert LogfmtRenderer(bool_as_flag=True)(None, None, {'ready': False}) == 'ready=false'\""
+    },
+    {
+      "id": "typescript-nanoid-full-alphabet",
+      "repoUrl": "https://github.com/ai/nanoid.git",
+      "ref": "07a39d62d84c21af5046fe6b2ef7b3e36ee557db",
+      "publicRepo": true,
+      "language": "typescript",
+      "taskClass": "source_localization",
+      "prompt": "Fix the non-secure ID generator so every symbol in its configured 64-character alphabet is reachable. Preserve output length and the existing random-selection approach. Modify production source and verify the repair.",
+      "requiredSourceFiles": ["non-secure/index.js"],
+      "allowedSupportFiles": ["test/non-secure.test.js"],
+      "explicitNoisePatterns": ["README.md", "docs/**", ".github/**", "test/demo/**"],
+      "requiredTouchedFiles": ["non-secure/index.js"],
+      "sourceInvariants": [{ "file": "non-secure/index.js", "requiredPresent": ["Math.random() * 64"] }],
+      "allowedDiffScopes": [
+        { "file": "non-secure/index.js", "allowWholeFile": true },
+        { "file": "test/non-secure.test.js", "allowWholeFile": true }
+      ],
+      "setupPatchFile": "codex-v02c-patches/typescript-nanoid.patch",
+      "sandboxImage": "docker.io/library/node@sha256:5711a0d445a1af54af9589066c646df387d1831a608226f4cd694fc59e745059",
+      "verificationCommand": "/usr/local/bin/node --input-type=module -e \"import {nanoid} from './non-secure/index.js'; import {urlAlphabet} from './url-alphabet/index.js'; Math.random=()=>0.999999999; if(nanoid(1)!==urlAlphabet[63]) throw new Error('last symbol unreachable')\""
+    },
+    {
+      "id": "typescript-yocto-queue-tail-integrity",
+      "repoUrl": "https://github.com/sindresorhus/yocto-queue.git",
+      "ref": "b07eac099753833b29d06c614149904445739776",
+      "publicRepo": true,
+      "language": "typescript",
+      "taskClass": "failure_first",
+      "prompt": "The preregistered check shows enqueueing after a dequeue corrupts a non-empty queue. Repair tail cleanup while preserving FIFO behavior and empty-queue cleanup. Modify production source and verify the repair.",
+      "requiredSourceFiles": ["index.js"],
+      "allowedSupportFiles": ["test.js"],
+      "explicitNoisePatterns": ["readme.md", ".github/**", "index.test-d.ts"],
+      "requiredTouchedFiles": ["index.js"],
+      "sourceInvariants": [{ "file": "index.js", "requiredPresent": ["if (!this.#head)"] }],
+      "allowedDiffScopes": [
+        { "file": "index.js", "allowWholeFile": true },
+        { "file": "test.js", "allowWholeFile": true }
+      ],
+      "setupPatchFile": "codex-v02c-patches/typescript-yocto-queue.patch",
+      "sandboxImage": "docker.io/library/node@sha256:5711a0d445a1af54af9589066c646df387d1831a608226f4cd694fc59e745059",
+      "initialFailureCommand": "/usr/local/bin/node --input-type=module -e \"import Queue from './index.js'; const q=new Queue(); q.enqueue(1); q.enqueue(2); q.dequeue(); q.enqueue(3); if([...q].join(',')!=='2,3') throw new Error('queue tail corrupted')\"",
+      "verificationCommand": "/usr/local/bin/node --input-type=module -e \"import Queue from './index.js'; const q=new Queue(); q.enqueue(1); q.enqueue(2); if(q.dequeue()!==1) throw new Error(); q.enqueue(3); if([...q].join(',')!=='2,3') throw new Error('queue tail corrupted')\""
+    },
+    {
+      "id": "typescript-kind-of-clamped-array",
+      "repoUrl": "https://github.com/jonschlinkert/kind-of.git",
+      "ref": "3c7e8fd86094cfdb1b1bd048a39f699161da62e4",
+      "publicRepo": true,
+      "language": "typescript",
+      "taskClass": "long_session",
+      "prompt": "Diagnose why clamped eight-bit typed arrays are reported as ordinary unsigned arrays.",
+      "turns": [
+        { "id": "diagnose", "prompt": "Diagnose why clamped eight-bit typed arrays are reported as ordinary unsigned arrays. Identify the production classification path, but do not edit yet." },
+        { "id": "repair", "prompt": "Implement the smallest production repair that restores the distinct clamped-array result while preserving other typed-array classifications." },
+        { "id": "verify", "prompt": "Verify clamped, unsigned, and signed eight-bit array classifications and fix any remaining issue. Leave the working tree ready for review." }
+      ],
+      "requiredSourceFiles": ["index.js"],
+      "allowedSupportFiles": ["test/test.js"],
+      "explicitNoisePatterns": ["README.md", ".github/**", "test/es6/**"],
+      "requiredTouchedFiles": ["index.js"],
+      "sourceInvariants": [{ "file": "index.js", "requiredPresent": ["case 'Uint8ClampedArray': return 'uint8clampedarray';"] }],
+      "allowedDiffScopes": [
+        { "file": "index.js", "allowWholeFile": true },
+        { "file": "test/test.js", "allowWholeFile": true }
+      ],
+      "setupPatchFile": "codex-v02c-patches/typescript-kind-of.patch",
+      "sandboxImage": "docker.io/library/node@sha256:5711a0d445a1af54af9589066c646df387d1831a608226f4cd694fc59e745059",
+      "verificationCommand": "/usr/local/bin/node -e \"const kindOf=require('./index.js'); if(kindOf(new Uint8ClampedArray(1))!=='uint8clampedarray') throw new Error('wrong typed-array kind')\""
+    },
+    {
+      "id": "go-uuid-invalid-hex-rejection",
+      "repoUrl": "https://github.com/google/uuid.git",
+      "ref": "2d3c2a9cc518326daf99a383f07c4d3c44317e4d",
+      "publicRepo": true,
+      "language": "go",
+      "taskClass": "source_localization",
+      "prompt": "Fix UUID parsing so any byte containing a non-hexadecimal nibble is rejected, while uppercase and lowercase hexadecimal input remain valid. Modify production source and verify the repair.",
+      "requiredSourceFiles": ["util.go"],
+      "allowedSupportFiles": ["uuid_test.go"],
+      "explicitNoisePatterns": ["README.md", ".github/**", "examples/**"],
+      "requiredTouchedFiles": ["util.go"],
+      "sourceInvariants": [{ "file": "util.go", "requiredPresent": ["b1 != 255 && b2 != 255"] }],
+      "allowedDiffScopes": [
+        { "file": "util.go", "allowWholeFile": true },
+        { "file": "uuid_test.go", "allowWholeFile": true }
+      ],
+      "setupPatchFile": "codex-v02c-patches/go-uuid.patch",
+      "sandboxImage": "docker.io/library/golang@sha256:8bee1901f1e530bfb4a7850aa7a479d17ae3a18beb6e09064ed54cfd245b7191",
+      "verificationCommand": "/usr/local/go/bin/go test ./..."
+    },
+    {
+      "id": "go-chi-clean-route-path",
+      "repoUrl": "https://github.com/go-chi/chi.git",
+      "ref": "ae6be7469132cf471ca099d8c7bda4010c4ff7b2",
+      "publicRepo": true,
+      "language": "go",
+      "taskClass": "failure_first",
+      "prompt": "The preregistered middleware check shows duplicate and dot path segments are no longer normalized before routing continues. Restore route-path cleaning without changing the request URL. Modify production source and verify the repair.",
+      "requiredSourceFiles": ["middleware/clean_path.go"],
+      "allowedSupportFiles": ["middleware/clean_path_test.go"],
+      "explicitNoisePatterns": ["README.md", "docs/**", ".github/**", "_examples/**"],
+      "requiredTouchedFiles": ["middleware/clean_path.go"],
+      "sourceInvariants": [{ "file": "middleware/clean_path.go", "requiredPresent": ["rctx.RoutePath = path.Clean(routePath)"] }],
+      "allowedDiffScopes": [
+        { "file": "middleware/clean_path.go", "allowWholeFile": true },
+        { "file": "middleware/clean_path_test.go", "allowWholeFile": true }
+      ],
+      "setupPatchFile": "codex-v02c-patches/go-chi.patch",
+      "sandboxImage": "docker.io/library/golang@sha256:8bee1901f1e530bfb4a7850aa7a479d17ae3a18beb6e09064ed54cfd245b7191",
+      "initialFailureCommand": "/usr/local/go/bin/go test ./middleware -run '^TestCleanPath$'",
+      "verificationCommand": "/usr/local/go/bin/go test ./middleware -run '^TestCleanPath$'"
+    },
+    {
+      "id": "go-errors-with-message-nil-contract",
+      "repoUrl": "https://github.com/pkg/errors.git",
+      "ref": "87f8819acf6dc28bf5d3c14b334268236d686f48",
+      "publicRepo": true,
+      "language": "go",
+      "taskClass": "long_session",
+      "prompt": "Diagnose why adding a message now returns nil for real errors and panics for a nil error.",
+      "turns": [
+        { "id": "diagnose", "prompt": "Diagnose why adding a message now returns nil for real errors and panics for a nil error. Identify the production control-flow error, but do not edit yet." },
+        { "id": "repair", "prompt": "Implement the smallest production repair that restores both the nil-input contract and normal message wrapping." },
+        { "id": "verify", "prompt": "Verify nil, single-message, and nested-message behavior and fix any remaining issue. Leave the working tree ready for review." }
+      ],
+      "requiredSourceFiles": ["errors.go"],
+      "allowedSupportFiles": ["errors_test.go"],
+      "explicitNoisePatterns": ["README.md", ".github/**", "example_test.go"],
+      "requiredTouchedFiles": ["errors.go"],
+      "sourceInvariants": [{ "file": "errors.go", "requiredPresent": ["if err == nil"] }],
+      "allowedDiffScopes": [
+        { "file": "errors.go", "allowWholeFile": true },
+        { "file": "errors_test.go", "allowWholeFile": true }
+      ],
+      "setupPatchFile": "codex-v02c-patches/go-errors.patch",
+      "sandboxImage": "docker.io/library/golang@sha256:8bee1901f1e530bfb4a7850aa7a479d17ae3a18beb6e09064ed54cfd245b7191",
+      "verificationCommand": "mkdir -p /go/src/github.com/pkg && ln -s /workspace /go/src/github.com/pkg/errors && cd /go/src/github.com/pkg/errors && GO111MODULE=off /usr/local/go/bin/go test -vet=off . -run '^TestWithMessage'"
+    },
+    {
+      "id": "java-json-pointer-escape-order",
+      "repoUrl": "https://github.com/stleary/JSON-java.git",
+      "ref": "4f859fdf3b5669894c5ed8a305ee5cd5f1fe2b7a",
+      "publicRepo": true,
+      "language": "java",
+      "taskClass": "source_localization",
+      "prompt": "Fix JSON Pointer serialization so tokens containing both a tilde and slash are escaped exactly once in the required order. Preserve builder and parsing behavior. Modify production source and verify the repair.",
+      "requiredSourceFiles": ["src/main/java/org/json/JSONPointer.java"],
+      "allowedSupportFiles": ["src/test/java/org/json/junit/JSONPointerTest.java"],
+      "explicitNoisePatterns": ["README.md", "docs/**", ".github/**", "src/test/resources/**"],
+      "requiredTouchedFiles": ["src/main/java/org/json/JSONPointer.java"],
+      "sourceInvariants": [{ "file": "src/main/java/org/json/JSONPointer.java", "requiredPresent": ["return token.replace(\"~\", \"~0\")", ".replace(\"/\", \"~1\")"] }],
+      "allowedDiffScopes": [
+        { "file": "src/main/java/org/json/JSONPointer.java", "allowWholeFile": true },
+        { "file": "src/test/java/org/json/junit/JSONPointerTest.java", "allowWholeFile": true }
+      ],
+      "setupPatchFile": "codex-v02c-patches/java-json.patch",
+      "sandboxImage": "docker.io/library/eclipse-temurin@sha256:6ea5548706b60ac0a602eaf48af74792cbab012d90e811ca8db6184b16b5c3d6",
+      "verificationCommand": "/opt/java/openjdk/bin/javac -d .kairn/pilot/classes src/main/java/org/json/*.java .kairn/pilot/Probe.java && /opt/java/openjdk/bin/java -cp .kairn/pilot/classes Probe"
+    },
+    {
+      "id": "java-parse-integer-positive-sign",
+      "repoUrl": "https://github.com/TheAlgorithms/Java.git",
+      "ref": "9a13ce00c4faedc02b2a04670ea9ef4729b70b2c",
+      "publicRepo": true,
+      "language": "java",
+      "taskClass": "failure_first",
+      "prompt": "The preregistered check shows signed decimal parsing accepts a minus sign but rejects a leading plus sign. Restore symmetric sign handling without weakening digit validation. Modify production source and verify the repair.",
+      "requiredSourceFiles": ["src/main/java/com/thealgorithms/maths/ParseInteger.java"],
+      "allowedSupportFiles": ["src/test/java/com/thealgorithms/maths/ParseIntegerTest.java"],
+      "explicitNoisePatterns": ["README.md", "docs/**", ".github/**"],
+      "requiredTouchedFiles": ["src/main/java/com/thealgorithms/maths/ParseInteger.java"],
+      "sourceInvariants": [{ "file": "src/main/java/com/thealgorithms/maths/ParseInteger.java", "requiredPresent": ["isNegative || isPositive ? 1 : 0"] }],
+      "allowedDiffScopes": [
+        { "file": "src/main/java/com/thealgorithms/maths/ParseInteger.java", "allowWholeFile": true },
+        { "file": "src/test/java/com/thealgorithms/maths/ParseIntegerTest.java", "allowWholeFile": true }
+      ],
+      "setupPatchFile": "codex-v02c-patches/java-algorithms.patch",
+      "sandboxImage": "docker.io/library/eclipse-temurin@sha256:6ea5548706b60ac0a602eaf48af74792cbab012d90e811ca8db6184b16b5c3d6",
+      "initialFailureCommand": "/opt/java/openjdk/bin/javac -d .kairn/pilot/classes src/main/java/com/thealgorithms/maths/ParseInteger.java .kairn/pilot/Probe.java && /opt/java/openjdk/bin/java -cp .kairn/pilot/classes Probe",
+      "verificationCommand": "/opt/java/openjdk/bin/javac -d .kairn/pilot/classes src/main/java/com/thealgorithms/maths/ParseInteger.java .kairn/pilot/Probe.java && /opt/java/openjdk/bin/java -cp .kairn/pilot/classes Probe"
+    },
+    {
+      "id": "java-codec-char-sequence-equality",
+      "repoUrl": "https://github.com/apache/commons-codec.git",
+      "ref": "20a5d22bc05933e2ff7a8f2cb3bce5cee8db64c1",
+      "publicRepo": true,
+      "language": "java",
+      "taskClass": "long_session",
+      "prompt": "Diagnose why equality between custom character sequences has become case-insensitive while String equality remains case-sensitive.",
+      "turns": [
+        { "id": "diagnose", "prompt": "Diagnose why equality between custom character sequences has become case-insensitive while String equality remains case-sensitive. Identify the production comparison path, but do not edit yet." },
+        { "id": "repair", "prompt": "Implement the smallest production repair so custom sequence equality follows the same case-sensitive contract." },
+        { "id": "verify", "prompt": "Verify equal, case-different, and length-different custom sequences and fix any remaining issue. Leave the working tree ready for review." }
+      ],
+      "requiredSourceFiles": ["src/main/java/org/apache/commons/codec/binary/StringUtils.java"],
+      "allowedSupportFiles": ["src/test/java/org/apache/commons/codec/binary/StringUtilsTest.java"],
+      "explicitNoisePatterns": ["README.md", "src/site/**", ".github/**"],
+      "requiredTouchedFiles": ["src/main/java/org/apache/commons/codec/binary/StringUtils.java"],
+      "sourceInvariants": [{ "file": "src/main/java/org/apache/commons/codec/binary/StringUtils.java", "requiredPresent": ["CharSequenceUtils.regionMatches(cs1, false, 0, cs2, 0, cs1.length())"] }],
+      "allowedDiffScopes": [
+        { "file": "src/main/java/org/apache/commons/codec/binary/StringUtils.java", "allowWholeFile": true },
+        { "file": "src/test/java/org/apache/commons/codec/binary/StringUtilsTest.java", "allowWholeFile": true }
+      ],
+      "setupPatchFile": "codex-v02c-patches/java-codec.patch",
+      "sandboxImage": "docker.io/library/eclipse-temurin@sha256:6ea5548706b60ac0a602eaf48af74792cbab012d90e811ca8db6184b16b5c3d6",
+      "verificationCommand": "/opt/java/openjdk/bin/javac -d .kairn/pilot/classes src/main/java/org/apache/commons/codec/CharEncoding.java src/main/java/org/apache/commons/codec/binary/CharSequenceUtils.java src/main/java/org/apache/commons/codec/binary/StringUtils.java .kairn/pilot/Probe.java && /opt/java/openjdk/bin/java -cp .kairn/pilot/classes Probe"
+    },
+    {
+      "id": "cpp-spdlog-circular-capacity",
+      "repoUrl": "https://github.com/gabime/spdlog.git",
+      "ref": "f5f173a1a57d0e2e0115f2ed71ee7ea316516853",
+      "publicRepo": true,
+      "language": "cpp",
+      "taskClass": "source_localization",
+      "prompt": "Fix the bounded circular queue so a queue configured for two items can retain two items before overwrite behavior begins. Preserve its reserved-slot representation and public API. Modify production source and verify the repair.",
+      "requiredSourceFiles": ["include/spdlog/details/circular_q.h"],
+      "allowedSupportFiles": ["tests/test_circular_q.cpp"],
+      "explicitNoisePatterns": ["README.md", "docs/**", ".github/**", "example/**"],
+      "requiredTouchedFiles": ["include/spdlog/details/circular_q.h"],
+      "sourceInvariants": [{ "file": "include/spdlog/details/circular_q.h", "requiredPresent": ["max_items_(max_items + 1)"] }],
+      "allowedDiffScopes": [
+        { "file": "include/spdlog/details/circular_q.h", "allowWholeFile": true },
+        { "file": "tests/test_circular_q.cpp", "allowWholeFile": true }
+      ],
+      "setupPatchFile": "codex-v02c-patches/cpp-spdlog.patch",
+      "sandboxImage": "docker.io/library/gcc@sha256:88134abee5c979390be4fedf9af2635e324004f0f3c1266a8c924c7a08e69500",
+      "verificationCommand": "g++ -std=c++17 -Iinclude .kairn/pilot/probe.cpp -o .kairn/pilot/probe && .kairn/pilot/probe"
+    },
+    {
+      "id": "cpp-cxxopts-false-text",
+      "repoUrl": "https://github.com/jarro2783/cxxopts.git",
+      "ref": "b6135315a54deb2b556219906eda8346f69bf703",
+      "publicRepo": true,
+      "language": "cpp",
+      "taskClass": "failure_first",
+      "prompt": "The preregistered check shows recognized false-like option text is rejected while unrelated text is accepted. Restore the parser helper's boolean contract. Modify production source and verify the repair.",
+      "requiredSourceFiles": ["include/cxxopts.hpp"],
+      "allowedSupportFiles": ["test/options.cpp"],
+      "explicitNoisePatterns": ["README.md", "docs/**", ".github/**", "examples/**"],
+      "requiredTouchedFiles": ["include/cxxopts.hpp"],
+      "sourceInvariants": [{ "file": "include/cxxopts.hpp", "requiredPresent": ["return !result.empty();"] }],
+      "allowedDiffScopes": [
+        { "file": "include/cxxopts.hpp", "allowWholeFile": true },
+        { "file": "test/options.cpp", "allowWholeFile": true }
+      ],
+      "setupPatchFile": "codex-v02c-patches/cpp-cxxopts.patch",
+      "sandboxImage": "docker.io/library/gcc@sha256:88134abee5c979390be4fedf9af2635e324004f0f3c1266a8c924c7a08e69500",
+      "initialFailureCommand": "g++ -std=c++17 -Iinclude .kairn/pilot/probe.cpp -o .kairn/pilot/probe && .kairn/pilot/probe",
+      "verificationCommand": "g++ -std=c++17 -Iinclude .kairn/pilot/probe.cpp -o .kairn/pilot/probe && .kairn/pilot/probe"
+    },
+    {
+      "id": "cpp-magic-enum-circular-navigation",
+      "repoUrl": "https://github.com/Neargye/magic_enum.git",
+      "ref": "a99f69495f48e8dff89b14b40a233163248c38c4",
+      "publicRepo": true,
+      "language": "cpp",
+      "taskClass": "long_session",
+      "prompt": "Diagnose why circular enum navigation aborts for ordinary forward and backward movement.",
+      "turns": [
+        { "id": "diagnose", "prompt": "Diagnose why circular enum navigation aborts for ordinary forward and backward movement. Identify the production index-normalization error, but do not edit yet." },
+        { "id": "repair", "prompt": "Implement the smallest production repair that restores forward navigation and negative wraparound without changing non-circular APIs." },
+        { "id": "verify", "prompt": "Verify forward, backward, and wraparound navigation and fix any remaining issue. Leave the working tree ready for review." }
+      ],
+      "requiredSourceFiles": ["include/magic_enum/magic_enum_utility.hpp"],
+      "allowedSupportFiles": ["test/test.cpp"],
+      "explicitNoisePatterns": ["README.md", "doc/**", ".github/**", "example/**"],
+      "requiredTouchedFiles": ["include/magic_enum/magic_enum_utility.hpp"],
+      "sourceInvariants": [{ "file": "include/magic_enum/magic_enum_utility.hpp", "requiredPresent": ["if (index < 0)"] }],
+      "allowedDiffScopes": [
+        { "file": "include/magic_enum/magic_enum_utility.hpp", "allowWholeFile": true },
+        { "file": "test/test.cpp", "allowWholeFile": true }
+      ],
+      "setupPatchFile": "codex-v02c-patches/cpp-magic-enum.patch",
+      "sandboxImage": "docker.io/library/gcc@sha256:88134abee5c979390be4fedf9af2635e324004f0f3c1266a8c924c7a08e69500",
+      "verificationCommand": "g++ -std=c++17 -Iinclude .kairn/pilot/probe.cpp -o .kairn/pilot/probe && .kairn/pilot/probe"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+diff --git a/include/spdlog/details/circular_q.h b/include/spdlog/details/circular_q.h
+index 188c0da..697a816 100644
+--- a/include/spdlog/details/circular_q.h
++++ b/include/spdlog/details/circular_q.h
+@@ -26,7 +26,7 @@ public:
+     circular_q() = default;
+ 
+     explicit circular_q(size_t max_items)
+-        : max_items_(max_items + 1)  // one item is reserved as marker for full q
++        : max_items_(max_items)  // one item is reserved as marker for full q
+           ,
+           v_(max_items_) {}
+ 
+diff --git a/.kairn/pilot/probe.cpp b/.kairn/pilot/probe.cpp
+new file mode 100644
+--- /dev/null
++++ b/.kairn/pilot/probe.cpp
+@@ -0,0 +1,10 @@
++#include <cassert>
++#include "spdlog/details/circular_q.h"
++
++int main() {
++    spdlog::details::circular_q<int> queue(2);
++    queue.push_back(1);
++    queue.push_back(2);
++    assert(queue.size() == 2);
++    assert(queue.front() == 1);
++}

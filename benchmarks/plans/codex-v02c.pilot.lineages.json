@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "lineage-registry.v1",
+  "registryId": "kairn-v02c-semantic-pilot",
+  "status": "sealed",
+  "lineages": [
+    { "id": "https://github.com/pallets/itsdangerous", "role": "pilot" },
+    { "id": "https://github.com/python-attrs/attrs", "role": "pilot" },
+    { "id": "https://github.com/hynek/structlog", "role": "pilot" },
+    { "id": "https://github.com/ai/nanoid", "role": "pilot" },
+    { "id": "https://github.com/sindresorhus/yocto-queue", "role": "pilot" },
+    { "id": "https://github.com/jonschlinkert/kind-of", "role": "pilot" },
+    { "id": "https://github.com/google/uuid", "role": "pilot" },
+    { "id": "https://github.com/go-chi/chi", "role": "pilot" },
+    { "id": "https://github.com/pkg/errors", "role": "pilot" },
+    { "id": "https://github.com/stleary/JSON-java", "role": "pilot" },
+    { "id": "https://github.com/TheAlgorithms/Java", "role": "pilot" },
+    { "id": "https://github.com/apache/commons-codec", "role": "pilot" },
+    { "id": "https://github.com/gabime/spdlog", "role": "pilot" },
+    { "id": "https://github.com/jarro2783/cxxopts", "role": "pilot" },
+    { "id": "https://github.com/Neargye/magic_enum", "role": "pilot" }
+  ]
+}

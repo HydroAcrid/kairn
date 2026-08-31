@@ -1,0 +1,13 @@
+diff --git a/src/attr/converters.py b/src/attr/converters.py
+index 0c3f0ea..9631ebf 100644
+--- a/src/attr/converters.py
++++ b/src/attr/converters.py
+@@ -149,7 +149,7 @@ def to_bool(val):
+     .. versionadded:: 21.3.0
+     """
+     if isinstance(val, str):
+-        val = val.lower()
++        val = val
+ 
+     if val in (True, "true", "t", "yes", "y", "on", "1", 1):
+         return True

@@ -1,0 +1,13 @@
+diff --git a/middleware/clean_path.go b/middleware/clean_path.go
+index adeba42..a36bb56 100644
+--- a/middleware/clean_path.go
++++ b/middleware/clean_path.go
+@@ -20,7 +20,7 @@ func CleanPath(next http.Handler) http.Handler {
+ 			} else {
+ 				routePath = r.URL.Path
+ 			}
+-			rctx.RoutePath = path.Clean(routePath)
++			rctx.RoutePath = routePath
+ 		}
+ 
+ 		next.ServeHTTP(w, r)

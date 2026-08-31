@@ -32,12 +32,31 @@ describe("ecological Codex pilot", () => {
 
     expect(registry).toMatchObject({
       schemaVersion: "codex-pilot-task-curation.v1",
-      status: "curation"
+      status: "sealed"
     });
     expect(registry.smoke).toHaveLength(1);
     expect(registry.smoke[0]?.status).toBe("sealed");
     expect(registry.pilot).toHaveLength(15);
     expect(new Set(registry.pilot.map((task) => `${task.language}/${task.scenario}`)).size).toBe(15);
+    expect(registry.pilot.every((task) => task.status === "sealed")).toBe(true);
+  });
+
+  it("loads the checked-in sealed 5x3 semantic pilot with a complete first-repeat schedule", () => {
+    const plan = loadCodexPilotPlan(path.resolve("benchmarks/plans/codex-v02c.pilot.sealed.json"));
+    const schedule = buildCodexPilotSchedule({ plan, seed: 20260722, stage: "first_repeat" });
+
+    expect(plan).toMatchObject({
+      schemaVersion: "codex-pilot.v2",
+      profile: "pilot",
+      repeats: 3,
+      kairn: CODEX_PILOT_SEMANTIC_RC_PIN
+    });
+    expect(plan.tasks).toHaveLength(15);
+    expect(new Set(plan.tasks.map((task) => `${task.language}/${task.taskClass}`)).size).toBe(15);
+    expect(new Set(plan.tasks.map((task) => task.repoUrl.toLowerCase())).size).toBe(15);
+    expect(plan.tasks.every((task) => task.setupPatchFile && fs.existsSync(task.setupPatchFile))).toBe(true);
+    expect(schedule).toHaveLength(30);
+    expect(new Set(schedule.map((attempt) => attempt.blockId)).size).toBe(15);
   });
 
   it("parses only completed-turn observed usage and preserves reasoning tokens", () => {

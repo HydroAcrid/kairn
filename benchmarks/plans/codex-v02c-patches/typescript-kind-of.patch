@@ -1,0 +1,13 @@
+diff --git a/index.js b/index.js
+index dfa799b..f623386 100644
+--- a/index.js
++++ b/index.js
+@@ -33,7 +33,7 @@ module.exports = function kindOf(val) {
+     // 8-bit typed arrays
+     case 'Int8Array': return 'int8array';
+     case 'Uint8Array': return 'uint8array';
+-    case 'Uint8ClampedArray': return 'uint8clampedarray';
++    case 'Uint8ClampedArray': return 'uint8array';
+ 
+     // 16-bit typed arrays
+     case 'Int16Array': return 'int16array';

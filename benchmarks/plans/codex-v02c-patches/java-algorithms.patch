@@ -1,0 +1,27 @@
+diff --git a/src/main/java/com/thealgorithms/maths/ParseInteger.java b/src/main/java/com/thealgorithms/maths/ParseInteger.java
+index cdca9f8..3c1255a 100644
+--- a/src/main/java/com/thealgorithms/maths/ParseInteger.java
++++ b/src/main/java/com/thealgorithms/maths/ParseInteger.java
+@@ -37,7 +37,7 @@ public final class ParseInteger {
+         final boolean isNegative = s.charAt(0) == '-';
+         final boolean isPositive = s.charAt(0) == '+';
+         int number = 0;
+-        for (int i = isNegative || isPositive ? 1 : 0, length = s.length(); i < length; ++i) {
++        for (int i = isNegative ? 1 : 0, length = s.length(); i < length; ++i) {
+             checkDigitAt(s, i);
+             number = number * 10 + digitToInt(s.charAt(i));
+         }
+diff --git a/.kairn/pilot/Probe.java b/.kairn/pilot/Probe.java
+new file mode 100644
+--- /dev/null
++++ b/.kairn/pilot/Probe.java
+@@ -0,0 +1,9 @@
++import com.thealgorithms.maths.ParseInteger;
++
++public final class Probe {
++    public static void main(String[] args) {
++        if (ParseInteger.parseInt("+42") != 42 || ParseInteger.parseInt("-7") != -7) {
++            throw new AssertionError("signed decimal parsing failed");
++        }
++    }
++}

@@ -1,0 +1,13 @@
+diff --git a/non-secure/index.js b/non-secure/index.js
+index 06f5478..f3eeaf4 100644
+--- a/non-secure/index.js
++++ b/non-secure/index.js
+@@ -23,7 +23,7 @@ export let nanoid = (size = 21) => {
+   let i = size | 0
+   while (i-- > 0) {
+     // `| 0` is more compact and faster than `Math.floor()`.
+-    id += urlAlphabet[(Math.random() * 64) | 0]
++    id += urlAlphabet[(Math.random() * 63) | 0]
+   }
+   return id
+ }

@@ -1,0 +1,30 @@
+diff --git a/src/main/java/org/json/JSONPointer.java b/src/main/java/org/json/JSONPointer.java
+index 34066c1..06bfbd2 100644
+--- a/src/main/java/org/json/JSONPointer.java
++++ b/src/main/java/org/json/JSONPointer.java
+@@ -263,8 +263,8 @@ public class JSONPointer {
+      * @see <a href="https://tools.ietf.org/html/rfc6901#section-3">rfc6901 section 3</a>
+      */
+     private static String escape(String token) {
+-        return token.replace("~", "~0")
+-                .replace("/", "~1");
++        return token.replace("/", "~1")
++                .replace("~", "~0");
+     }
+ 
+     /**
+diff --git a/.kairn/pilot/Probe.java b/.kairn/pilot/Probe.java
+new file mode 100644
+--- /dev/null
++++ b/.kairn/pilot/Probe.java
+@@ -0,0 +1,10 @@
++import org.json.JSONPointer;
++
++public final class Probe {
++    public static void main(String[] args) {
++        String value = JSONPointer.builder().append("a~/b").build().toString();
++        if (!"/a~0~1b".equals(value)) {
++            throw new AssertionError(value);
++        }
++    }
++}
