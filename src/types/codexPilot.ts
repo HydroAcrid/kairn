@@ -87,6 +87,9 @@ export type CodexPilotAttemptResult = {
   explicitNoiseFilesOpened: number;
   extraneousFilesOpened: number;
   repeatedUnchangedReadEvents: number;
+  attemptPreparationMs: number;
+  kairnSetupMs: number;
+  agentRunMs: number;
   kairnHookInvocationCount: number;
   kairnHookAuditCount: number;
   kairnPayloadTokens: number;

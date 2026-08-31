@@ -544,3 +544,18 @@ an estimated payload token count, and a payload hash; it stores no prompt,
 path, source, or context content. Any Kairn hook in the vanilla arm invalidates
 that attempt as contamination. A zero-work live probe confirmed one hook
 process and one audit receipt before permitting another paid pair.
+
+The repaired `23e7ab0` smoke then completed with two trace-valid,
+quality-passing attempts. Vanilla recorded zero Kairn invocations; the Kairn
+arm recorded one syscall invocation, one audit receipt, and an estimated 491
+tokens of emitted local evidence. Both attempts recalled and modified the
+required production source and passed verification. Kairn opened three
+extraneous files versus nine for vanilla, and zero explicit-noise files versus
+three. Observed total tokens were 152,703 versus 153,220, a signed delta of
+-517 tokens (-0.34%). This is one development pair and is not a public
+effectiveness estimate or confidence claim.
+
+That smoke also showed that the first-content timers began before cloning and
+index setup. Token and file-access results remain valid, but those latency
+values are excluded. Subsequent reports record preparation, Kairn setup, and
+agent-run time separately, with time-to-source starting only when Codex begins.

@@ -242,6 +242,7 @@ async function runLiveAttempt(input: {
   const rawDir = path.join(input.outDir, "raw", input.attempt.id);
   let cleanupKairn = () => {};
   let cleanupCodexTrust = () => {};
+  let kairnSetupMs = 0;
   try {
     if (fs.existsSync(workspace)) fs.rmSync(workspace, { recursive: true, force: true });
     if (fs.existsSync(rawDir)) fs.rmSync(rawDir, { recursive: true, force: true });
@@ -259,7 +260,11 @@ async function runLiveAttempt(input: {
       : undefined;
     if (initialFailure && initialFailure.status === 0) throw new Error("failure_first precondition unexpectedly passed");
 
-    if (input.attempt.condition === "codex_kairn") cleanupKairn = await configureKairn(workspace, input.plan);
+    if (input.attempt.condition === "codex_kairn") {
+      const kairnSetupStartedMs = Date.now();
+      cleanupKairn = await configureKairn(workspace, input.plan);
+      kairnSetupMs = Date.now() - kairnSetupStartedMs;
+    }
     else assertVanillaHasNoKairnConfig(workspace);
     cleanupCodexTrust = configureCodexProjectTrust(input.codexHome, workspace);
     const tracePrefix = path.join(rawDir, "strace");
@@ -267,6 +272,7 @@ async function runLiveAttempt(input: {
     const turns = taskPrompts(input.task, initialFailure?.output);
     const captured: CapturedTurn[] = [];
     let threadId: string | undefined;
+    const agentStartedMs = Date.now();
     for (const [turnIndex, prompt] of turns.entries()) {
       const turn = turnIndex + 1;
       const result = await runCodexTurn({
@@ -287,6 +293,7 @@ async function runLiveAttempt(input: {
       if (result.status !== 0 || result.timedOut) break;
       if (turn < turns.length && !threadId) break;
     }
+    const agentEndedMs = Date.now();
     cleanupKairn();
     cleanupKairn = () => {};
     cleanupCodexTrust();
@@ -378,11 +385,14 @@ async function runLiveAttempt(input: {
       explicitNoiseFilesOpened,
       extraneousFilesOpened,
       repeatedUnchangedReadEvents: fileAccesses.filter((access) => access.unchangedRepeat).length,
+      attemptPreparationMs: agentStartedMs - startedMs,
+      kairnSetupMs,
+      agentRunMs: agentEndedMs - agentStartedMs,
       kairnHookInvocationCount: hookEvidence.traceInvocationCount,
       kairnHookAuditCount: hookEvidence.auditRecordCount,
       kairnPayloadTokens: input.attempt.condition === "codex_kairn" ? hookEvidence.estimatedPayloadTokens : 0,
-      ...(firstMention ? { timeToFirstRequiredPathMs: Math.max(0, firstMention.receivedMs - startedMs) } : {}),
-      ...(firstAccess ? { timeToFirstRequiredContentMs: Math.max(0, firstAccess.timestampMs - startedMs) } : {}),
+      ...(firstMention ? { timeToFirstRequiredPathMs: Math.max(0, firstMention.receivedMs - agentStartedMs) } : {}),
+      ...(firstAccess ? { timeToFirstRequiredContentMs: Math.max(0, firstAccess.timestampMs - agentStartedMs) } : {}),
       ...(firstPathTurn ? { tokensBeforeFirstRequiredPath: usageBeforeTurn(usageByTurn, firstPathTurn) } : {}),
       ...(firstAccessTurn ? { tokensBeforeFirstRequiredContent: usageBeforeTurn(usageByTurn, firstAccessTurn) } : {}),
       verificationPassed,
@@ -409,6 +419,9 @@ async function runLiveAttempt(input: {
       explicitNoiseFilesOpened: 0,
       extraneousFilesOpened: 0,
       repeatedUnchangedReadEvents: 0,
+      attemptPreparationMs: 0,
+      kairnSetupMs,
+      agentRunMs: 0,
       kairnHookInvocationCount: 0,
       kairnHookAuditCount: 0,
       kairnPayloadTokens: 0,
@@ -840,6 +853,9 @@ function plannedAttempt(attempt: CodexPilotAttemptPlan, task: ExperimentTask): C
     explicitNoiseFilesOpened: 0,
     extraneousFilesOpened: 0,
     repeatedUnchangedReadEvents: 0,
+    attemptPreparationMs: 0,
+    kairnSetupMs: 0,
+    agentRunMs: 0,
     kairnHookInvocationCount: 0,
     kairnHookAuditCount: 0,
     kairnPayloadTokens: 0,
@@ -899,6 +915,9 @@ function fakeAttempt(
     explicitNoiseFilesOpened: typeof row.explicitNoiseFilesOpened === "number" ? row.explicitNoiseFilesOpened : 0,
     extraneousFilesOpened: typeof row.extraneousFilesOpened === "number" ? row.extraneousFilesOpened : 0,
     repeatedUnchangedReadEvents: typeof row.repeatedUnchangedReadEvents === "number" ? row.repeatedUnchangedReadEvents : 0,
+    attemptPreparationMs: typeof row.attemptPreparationMs === "number" ? row.attemptPreparationMs : 0,
+    kairnSetupMs: typeof row.kairnSetupMs === "number" ? row.kairnSetupMs : 0,
+    agentRunMs: typeof row.agentRunMs === "number" ? row.agentRunMs : 0,
     kairnHookInvocationCount: typeof row.kairnHookInvocationCount === "number" ? row.kairnHookInvocationCount : 0,
     kairnHookAuditCount: typeof row.kairnHookAuditCount === "number" ? row.kairnHookAuditCount : 0,
     kairnPayloadTokens: typeof row.kairnPayloadTokens === "number" ? row.kairnPayloadTokens : 0,
@@ -1087,6 +1106,9 @@ function buildPublicEvidence(report: CodexPilotReport): Record<string, unknown> 
       explicitNoiseFilesOpened: attempt.explicitNoiseFilesOpened,
       extraneousFilesOpened: attempt.extraneousFilesOpened,
       repeatedUnchangedReadEvents: attempt.repeatedUnchangedReadEvents,
+      attemptPreparationMs: attempt.attemptPreparationMs,
+      kairnSetupMs: attempt.kairnSetupMs,
+      agentRunMs: attempt.agentRunMs,
       kairnHookInvocationCount: attempt.kairnHookInvocationCount,
       kairnHookAuditCount: attempt.kairnHookAuditCount,
       kairnPayloadTokens: attempt.kairnPayloadTokens,
