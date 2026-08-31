@@ -1870,7 +1870,7 @@ describe("model-based semantic candidates", () => {
     }
   });
 
-  it("allocates bounded symbol documents across large files without first-symbol bias", () => {
+  it("caps symbol documents at one quarter of production file documents", () => {
     const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-symbol-budget-"));
     try {
       const largePath = "src/large-parser.ts";
@@ -1927,12 +1927,11 @@ describe("model-based semantic candidates", () => {
         graph,
         maxDocuments: files.length + 12
       });
-      const largeSymbolDocuments = documents.filter(
-        (document) => document.filePath === largePath && document.kind === "symbol"
+      const symbolDocuments = documents.filter((document) => document.kind === "symbol");
+      expect(symbolDocuments).toHaveLength(Math.ceil(files.length * 0.25));
+      expect(documents.length).toBeLessThanOrEqual(
+        files.length + Math.ceil(files.length * 0.25)
       );
-      expect(largeSymbolDocuments.length).toBeGreaterThanOrEqual(4);
-      expect(largeSymbolDocuments.some((document) => /method(?:3[0-9]|40)/.test(document.symbol ?? ""))).toBe(true);
-      expect(documents.length).toBeLessThanOrEqual(files.length + 12);
     } finally {
       fs.rmSync(rootPath, { recursive: true, force: true });
     }
@@ -2052,7 +2051,7 @@ describe("model-based semantic candidates", () => {
     }
   });
 
-  it("retains bounded behavioral symbol coverage when file documents exceed the nominal budget", () => {
+  it("keeps complete production file coverage without exceeding the nominal budget with symbols", () => {
     const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-large-repo-budget-"));
     try {
       const files = Array.from({ length: 20 }, (_, index) => {
@@ -2099,8 +2098,39 @@ describe("model-based semantic candidates", () => {
         maxDocuments: 10
       });
       expect(documents.filter((document) => document.kind === "file")).toHaveLength(20);
-      expect(documents.filter((document) => document.kind === "symbol")).toHaveLength(5);
-      expect(documents).toHaveLength(25);
+      expect(documents.filter((document) => document.kind === "symbol")).toHaveLength(0);
+      expect(documents).toHaveLength(20);
+    } finally {
+      fs.rmSync(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps tests in structural retrieval without duplicating them in the global semantic index", () => {
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-production-only-"));
+    try {
+      const sourcePath = "src/session.ts";
+      const testPath = "test/session.test.ts";
+      for (const [filePath, content] of [
+        [sourcePath, "export function renewSession() { return true; }\n"],
+        [testPath, "test('renews a session', () => renewSession());\n"]
+      ] as const) {
+        fs.mkdirSync(path.dirname(path.join(rootPath, filePath)), { recursive: true });
+        fs.writeFileSync(path.join(rootPath, filePath), content);
+      }
+      const sourceFile = file(rootPath, sourcePath);
+      const testFile = { ...file(rootPath, testPath), kind: "test" as const };
+      const graph: RepoGraph = {
+        rootPath,
+        files: [sourceFile, testFile],
+        parsedFiles: [],
+        symbols: [],
+        edges: []
+      };
+
+      const documents = buildSemanticDocuments({ rootPath, graph, maxDocuments: 20 });
+      expect(documents).toEqual([
+        expect.objectContaining({ filePath: sourcePath, kind: "file" })
+      ]);
     } finally {
       fs.rmSync(rootPath, { recursive: true, force: true });
     }

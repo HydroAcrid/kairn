@@ -58,16 +58,14 @@ export function buildSemanticDocuments(input: {
   }
 
   const selected = [...fileDocuments];
-  // A repository can have more eligible files than the nominal semantic
-  // document budget. File-level coverage remains mandatory, so reserve a
-  // bounded additional symbol budget instead of collapsing to zero behavioral
-  // documents exactly where large repositories need them most.
-  const symbolBudget = input.maxDocuments > selected.length
-    ? input.maxDocuments - selected.length
-    : Math.min(
-        input.maxDocuments,
-        Math.ceil(selected.length * LARGE_REPOSITORY_SYMBOL_FRACTION)
-      );
+  // Production file-level coverage is mandatory. Symbol bodies are optional
+  // enrichment and may use at most one quarter as many documents as files,
+  // while always remaining inside the configured document budget.
+  const remainingDocumentBudget = Math.max(0, input.maxDocuments - selected.length);
+  const symbolBudget = Math.min(
+    remainingDocumentBudget,
+    Math.ceil(selected.length * LARGE_REPOSITORY_SYMBOL_FRACTION)
+  );
   if (symbolBudget > 0) {
     selected.push(...allocateSymbolDocuments(symbolQueues, symbolBudget));
   }
@@ -222,7 +220,7 @@ function stableEligibleFiles(files: FileRecord[]): FileRecord[] {
   return files
     .filter((file) =>
       file.indexTier !== "tier0" &&
-      ["source", "test", "route", "component", "schema", "config"].includes(file.kind)
+      ["source", "route", "component", "schema", "config"].includes(file.kind)
     )
     .sort((left, right) => left.path.localeCompare(right.path));
 }
