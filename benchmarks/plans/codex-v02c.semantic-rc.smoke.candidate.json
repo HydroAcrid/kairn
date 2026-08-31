@@ -4,7 +4,7 @@
   "name": "Kairn v0.2C semantic release-candidate smoke",
   "sealed": false,
   "profile": "smoke",
-  "lineageRegistry": "../lineage-registry.v1.json",
+  "lineageRegistry": "codex-v02c.semantic-rc.lineages.json",
   "conditions": [
     "vanilla_codex",
     "codex_kairn"

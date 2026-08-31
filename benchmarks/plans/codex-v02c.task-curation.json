@@ -6,11 +6,11 @@
   "smoke": [
     {
       "id": "semantic-rc-p-map-abort-cleanup",
-      "status": "blocked_docker_validation",
+      "status": "sealed",
       "repositoryLineageId": "https://github.com/sindresorhus/p-map",
       "repoUrl": "https://github.com/sindresorhus/p-map.git",
       "ref": "47bc82e569e962e190eb56242510709cfa5b805f",
-      "taskPlan": "codex-v02c.semantic-rc.smoke.candidate.json"
+      "taskPlan": "codex-v02c.semantic-rc.smoke.sealed.json"
     }
   ],
   "pilot": [

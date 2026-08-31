@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "lineage-registry.v1",
+  "registryId": "kairn-v02c-semantic-rc-smoke",
+  "status": "sealed",
+  "lineages": [
+    {
+      "id": "https://github.com/sindresorhus/p-map",
+      "role": "live_smoke"
+    }
+  ]
+}

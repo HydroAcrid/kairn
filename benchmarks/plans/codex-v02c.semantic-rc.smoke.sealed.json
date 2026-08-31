@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "codex-pilot.v2",
+  "id": "codex-v02c-semantic-rc-smoke",
+  "name": "Kairn v0.2C semantic release-candidate smoke",
+  "sealed": true,
+  "profile": "smoke",
+  "lineageRegistry": "codex-v02c.semantic-rc.lineages.json",
+  "conditions": [
+    "vanilla_codex",
+    "codex_kairn"
+  ],
+  "codex": {
+    "package": "@openai/codex",
+    "version": "0.145.0",
+    "integrity": "sha512-/PSPSFujjjmiyVFvG2yu/grOFhsWdokTH8t2KGWhXSo/M5n/dIDsnbsnO82/7bLtIoDuzQf7ATBUMWqPWQINlQ==",
+    "model": "gpt-5.6",
+    "reasoningEffort": "medium",
+    "serviceTier": "standard",
+    "fastMode": false
+  },
+  "kairn": {
+    "candidateMode": "semantic",
+    "semanticModelId": "jina-code-v2-q8",
+    "semanticModelManifestSha256": "d36c6ed084986e362004c43ddca67dabf5ef281617882eed9ee0e4b7dca999c0",
+    "rankerMode": "calibrated",
+    "rankerModelId": "kairn-semantic-rc-v185",
+    "rankerArtifactChecksum": "642aeadca7e66ef6d44de7b1f1c9a76fe881ff023461589995fd6b52f89f5bad",
+    "featureSchemaVersion": "evidence-features-v5"
+  },
+  "repeats": 1,
+  "timeoutMs": 300000,
+  "tasks": [
+    {
+      "id": "typescript-p-map-already-aborted-signal",
+      "repoUrl": "https://github.com/sindresorhus/p-map.git",
+      "ref": "47bc82e569e962e190eb56242510709cfa5b805f",
+      "publicRepo": true,
+      "language": "typescript",
+      "taskClass": "source_localization",
+      "prompt": "Fix abort handling so calling pMap with a signal that is already aborted rejects immediately without registering a new abort listener. Keep behavior for live signals unchanged. Modify the production source and verify the change.",
+      "requiredSourceFiles": [
+        "index.js"
+      ],
+      "allowedSupportFiles": [
+        "test.js"
+      ],
+      "explicitNoisePatterns": [
+        "readme.md",
+        ".github/**"
+      ],
+      "requiredTouchedFiles": [
+        "index.js"
+      ],
+      "sourceInvariants": [
+        {
+          "file": "index.js",
+          "requiredPresent": [
+            "if (signal.aborted)",
+            "signal.addEventListener('abort', signalListener, {once: true})"
+          ]
+        }
+      ],
+      "allowedDiffScopes": [
+        {
+          "file": "index.js",
+          "allowWholeFile": true
+        },
+        {
+          "file": "test.js",
+          "allowWholeFile": true
+        }
+      ],
+      "sandboxImage": "docker.io/library/node@sha256:5711a0d445a1af54af9589066c646df387d1831a608226f4cd694fc59e745059",
+      "verificationCommand": "node --input-type=module -e \"import assert from 'node:assert/strict'; import pMap from './index.js'; let added=0; const reason=new Error('stop'); const signal={aborted:true,reason,addEventListener(){added+=1},removeEventListener(){}}; await assert.rejects(pMap([1], async value=>value,{signal}), error=>error===reason); assert.equal(added,0);\""
+    }
+  ]
+}

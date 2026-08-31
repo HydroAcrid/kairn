@@ -30,8 +30,7 @@ describe("ecological Codex pilot", () => {
       status: "curation"
     });
     expect(registry.smoke).toHaveLength(1);
-    expect(registry.smoke.every((task) => task.status !== "sealed")).toBe(true);
-    expect(registry.smoke[0]?.status).toBe("blocked_docker_validation");
+    expect(registry.smoke[0]?.status).toBe("sealed");
     expect(registry.pilot).toHaveLength(15);
     expect(new Set(registry.pilot.map((task) => `${task.language}/${task.scenario}`)).size).toBe(15);
   });
@@ -129,7 +128,7 @@ describe("ecological Codex pilot", () => {
     expect(() => loadCodexPilotPlan(planPath)).toThrow(/rankerArtifactChecksum must be pinned/);
   });
 
-  it("keeps the checked-in semantic smoke candidate valid but unsealed until Docker verification", () => {
+  it("keeps the checked-in semantic smoke candidate as an unsealed curation record", () => {
     const candidate = JSON.parse(fs.readFileSync(
       path.resolve("benchmarks/plans/codex-v02c.semantic-rc.smoke.candidate.json"),
       "utf8"
@@ -155,6 +154,20 @@ describe("ecological Codex pilot", () => {
       schemaVersion: "codex-pilot.v2",
       sealed: true,
       kairn: CODEX_PILOT_SEMANTIC_RC_PIN
+    });
+  });
+
+  it("loads the Docker-verified semantic smoke plan with its sealed identity", () => {
+    expect(loadCodexPilotPlan(path.resolve(
+      "benchmarks/plans/codex-v02c.semantic-rc.smoke.sealed.json"
+    ))).toMatchObject({
+      schemaVersion: "codex-pilot.v2",
+      sealed: true,
+      kairn: CODEX_PILOT_SEMANTIC_RC_PIN,
+      tasks: [{
+        id: "typescript-p-map-already-aborted-signal",
+        sandboxImage: "docker.io/library/node@sha256:5711a0d445a1af54af9589066c646df387d1831a608226f4cd694fc59e745059"
+      }]
     });
   });
 });

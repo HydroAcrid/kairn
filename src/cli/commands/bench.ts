@@ -324,7 +324,7 @@ export function registerBenchCommands(program: Command): void {
   benchCommand
     .command("codex-pilot")
     .description("Run the subscription-auth ecological Vanilla Codex/Kairn pilot with observed JSONL usage.")
-    .requiredOption("--plan <path>", "sealed codex-pilot.v1 plan JSON path")
+    .requiredOption("--plan <path>", "sealed codex-pilot.v1 or codex-pilot.v2 plan JSON path")
     .requiredOption("--out <path>", "local campaign artifact directory")
     .option("--seed <n>", "recorded paired-order seed", parseNonNegativeInt, 20260722)
     .addOption(new Option("--stage <stage>", "usage-gated campaign stage").choices(["smoke", "first_repeat", "complete"]).makeOptionMandatory())

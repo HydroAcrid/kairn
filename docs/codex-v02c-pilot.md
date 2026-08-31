@@ -48,21 +48,20 @@ The non-runnable curation registry is
 `benchmarks/plans/codex-v02c.task-curation.json`. A `.sealed.json` plan must not
 be created until its repository and verifier have actually been checked.
 
-The current semantic smoke candidate is
-`benchmarks/plans/codex-v02c.semantic-rc.smoke.candidate.json`. Its immutable
+The semantic smoke plan is
+`benchmarks/plans/codex-v02c.semantic-rc.smoke.sealed.json`. Its immutable
 `sindresorhus/p-map` checkout and already-aborted-signal verifier were checked
-locally: the verifier fails on the sealed source commit and passes after the
-minimal production fix. It remains `sealed: false` because Docker Desktop was
-not available to WSL during the 2026-08-31 preflight, so the digest-pinned
-offline container has not yet been verified. This is an infrastructure blocker
-and produces no effectiveness result.
+inside the digest-pinned Node container with networking disabled: the verifier
+fails on the sealed source commit and passes after the minimal production fix.
+The earlier `.candidate.json` file remains as the explicitly unsealed curation
+record.
 
 ## Staged execution
 
 ```bash
 kairn bench codex-pilot \
-  --plan benchmarks/plans/codex-v02c.smoke.sealed.json \
-  --out artifacts/codex-v02c-smoke \
+  --plan benchmarks/plans/codex-v02c.semantic-rc.smoke.sealed.json \
+  --out artifacts/codex-v02c-semantic-rc-smoke \
   --seed 20260722 \
   --stage smoke \
   --codex-command .kairn/tools/codex-0.145.0/node_modules/.bin/codex
