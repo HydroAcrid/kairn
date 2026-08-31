@@ -37,7 +37,7 @@ What npm installs:
 
 - `usekairn`: the complete local Node.js CLI and runtime, exposing the `kairn` command.
 - Its pinned JavaScript, WASM parser, and SQLite dependencies through npm. There is no separate Kairn platform package or hosted runtime.
-- No semantic-model download. Model installation happens only after an explicit `kairn model install` or `kairn enable --semantic-preview` choice.
+- No semantic-model download. Model installation happens only after an explicit `kairn model install`, `kairn enable --semantic-preview`, or experimental `kairn enable --semantic` choice.
 - Telemetry remains opt-in during setup. Installing Kairn does not enable telemetry or mutate agent configs.
 
 Update public beta installs with:
@@ -74,13 +74,18 @@ kairn enable
 # continuing to serve deterministic results.
 kairn enable --semantic-preview
 kairn enable --semantic-preview --offline
+
+# Experimental served release candidate for controlled A/B evaluation. The
+# normal beta default remains deterministic until live quality gates pass.
+kairn enable --semantic
+kairn enable --semantic --offline
 ```
 
-Normal `kairn enable` uses the deterministic candidate generator and never downloads a model. `--semantic-preview` explicitly offers the pinned model download, shows its id, source revision, license, size, and cache location, and records model candidates in shadow mode without changing the evidence served to agents. Installation stages every artifact atomically and verifies its pinned SHA-256 checksum. A missing, corrupt, incompatible, or stale preview model produces a visible fallback to exact path, failure, symbol, BM25, git, session, and graph evidence. It never restores pseudo-semantic hashing.
+Normal `kairn enable` uses the deterministic candidate generator and never downloads a model. `--semantic-preview` explicitly offers the pinned model download, shows its id, source revision, license, size, and cache location, and records model candidates in shadow mode without changing the evidence served to agents. `--semantic` serves the experimental semantic release candidate: global model retrieval supplies the bounded file pool, real whole-file and symbol-body similarities feed the local v5 ranker, and deterministic policy still controls safety and delivery. `--semantic --offline` fails before changing agent configuration when the model is not already installed. Installation stages every artifact atomically and verifies its pinned SHA-256 checksum. Missing, corrupt, incompatible, or stale semantic state is reported explicitly and never restores pseudo-semantic hashing.
 
 File-level documents are built for eligible source files, with additional bounded symbol documents allocated across large files. Generated and vendor files are excluded from the semantic lane; an explicit path or precise failure can still hard-pin one without requiring semantic relevance. Once installed, indexing and retrieval work with outbound networking blocked; repository content, evidence, prompts, and agent trajectories are not sent to a Kairn service.
 
-Candidate generation supports `legacy`, `shadow`, and `semantic` rollout modes. The Monday beta defaults to `legacy`. Shadow computes and records model-based candidates while serving the deterministic generator; semantic mode serves the global embedding lane and remains a research-only configuration until its promotion gates pass.
+Candidate generation supports `legacy`, `shadow`, and `semantic` rollout modes. The beta defaults to `legacy`. Shadow computes and records model-based candidates while serving the deterministic generator. Semantic mode is an explicit release-candidate path for controlled evaluation; it does not become the default until clean-install, live verification, source-recall, latency, and observed-token gates pass.
 
 For private beta tarballs or local source builds:
 

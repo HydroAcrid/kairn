@@ -498,3 +498,31 @@ inspection on 2026-08-28. That artifact is now permanently tombstoned and was
 not used here. A new sealed holdout must use fresh repository lineages. Exact
 hashes and the stopping decision are recorded in
 `benchmarks/checkpoints/v02c-balanced-required-source-39667a4.json`.
+
+## Opt-in serving release candidate
+
+The semantic release-candidate branch connects the frozen model work to the
+actual local runtime without changing the beta default. `kairn enable
+--semantic` now performs global Jina retrieval, carries whole-file and
+symbol-body similarities into `evidence-features-v5`, runs the bundled
+`kairn-semantic-rc-v185` artifact, and leaves delivery and abstention to the
+deterministic governor. The old v4 artifact format remains loadable for
+reproduction and rollback.
+
+This is an evaluation path, not a promotion claim. v185 came from the
+train/calibration development cohort, the earlier detached holdout is
+tombstoned, and the balanced cohort is retrospective. The deterministic beta
+default remains unchanged until a fresh live A/B passes quality and trace
+integrity gates.
+
+The first offline end-to-end fixture verified:
+
+- checksummed Jina model status `ready` with no network access;
+- three semantic documents and embeddings created for a two-file repository;
+- an unchanged second index reused all three embeddings and created zero;
+- semantic candidate mode, calibrated ranker mode, model id, schema id, and
+  similarity metadata were visible in the served response;
+- an exact-symbol query delivered the required TypeScript source as a path
+  hint; and
+- a broad behavioral query correctly exercised abstention, which remains a
+  live-recall risk to measure rather than bypass with a heuristic.
