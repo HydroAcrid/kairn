@@ -580,6 +580,7 @@ export function rankEvidenceBackedGraphCandidates(input: {
     precision: number;
     bestSeedRank: number;
     seedRanks: Map<string, number>;
+    primarySeedRanks: Map<string, number>;
     relationFamilyRanks: Map<string, number>;
     sourceTestPair: boolean;
   };
@@ -630,6 +631,9 @@ export function rankEvidenceBackedGraphCandidates(input: {
     const seedSupport = precision > (existing?.precision ?? 0)
       ? new Map<string, number>()
       : new Map(existing?.seedRanks ?? []);
+    const primarySeedSupport = precision > (existing?.precision ?? 0)
+      ? new Map<string, number>()
+      : new Map(existing?.primarySeedRanks ?? []);
     const relationFamilyRanks = precision > (existing?.precision ?? 0)
       ? new Map<string, number>()
       : new Map(existing?.relationFamilyRanks ?? []);
@@ -641,6 +645,12 @@ export function rankEvidenceBackedGraphCandidates(input: {
     // not make a precise call observed from seed 40 look like seed-1 evidence.
     if (precision === strongestPrecision) {
       seedSupport.set(seedPath, Math.min(seedSupport.get(seedPath) ?? Number.POSITIVE_INFINITY, seedRank));
+      if (primarySeedSet.has(seedPath)) {
+        primarySeedSupport.set(
+          seedPath,
+          Math.min(primarySeedSupport.get(seedPath) ?? Number.POSITIVE_INFINITY, seedRank)
+        );
+      }
     }
     const relationFamily = graphRelationFamily(edge, seedPath);
     if (relationFamily && precision === strongestPrecision) {
@@ -660,6 +670,7 @@ export function rankEvidenceBackedGraphCandidates(input: {
       precision: strongestPrecision,
       bestSeedRank: Math.min(...seedSupport.values()),
       seedRanks: seedSupport,
+      primarySeedRanks: primarySeedSupport,
       relationFamilyRanks,
       sourceTestPair
     });
@@ -730,6 +741,8 @@ export function rankEvidenceBackedGraphCandidates(input: {
         )
       : (
           right.precision - left.precision ||
+          Number(right.primarySeedRanks.size > 0) - Number(left.primarySeedRanks.size > 0) ||
+          Number(right.sourceTestPair) - Number(left.sourceTestPair) ||
           (evidenceRanks.get(right.path)?.size ?? 0) - (evidenceRanks.get(left.path)?.size ?? 0) ||
           left.bestSeedRank - right.bestSeedRank ||
           right.seedRanks.size - left.seedRanks.size ||

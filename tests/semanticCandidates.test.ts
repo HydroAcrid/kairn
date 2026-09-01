@@ -747,6 +747,40 @@ describe("model-based semantic candidates", () => {
     expect(result.enrichedPaths).toContain(productionSource.path);
   });
 
+  it("keeps a parser-proven source-test companion ahead of unrelated precise calls", () => {
+    const rootPath = "/repo";
+    const testSeed = {
+      ...file(rootPath, "tests/payment.test.ts"),
+      kind: "test" as const
+    };
+    const productionSource = file(rootPath, "src/payment.ts");
+    const callSeeds = Array.from({ length: 70 }, (_, index) =>
+      file(rootPath, `src/seed-${String(index).padStart(2, "0")}.ts`)
+    );
+    const callTargets = Array.from({ length: 70 }, (_, index) =>
+      file(rootPath, `src/call-${String(index).padStart(2, "0")}.ts`)
+    );
+    const ranked = rankEvidenceBackedGraphCandidates({
+      seedPaths: [testSeed.path, ...callSeeds.map((candidate) => candidate.path)],
+      edges: [
+        edge(rootPath, testSeed.path, productionSource.path, "test_for"),
+        ...callSeeds.map((seed, index) =>
+          edge(rootPath, seed.path, callTargets[index]!.path, "call")
+        )
+      ],
+      filesByPath: new Map(
+        [testSeed, productionSource, ...callSeeds, ...callTargets]
+          .map((candidate) => [candidate.path, candidate])
+      ),
+      evidenceRankings: [{
+        channel: "semantic",
+        paths: callTargets.map((candidate) => candidate.path)
+      }]
+    });
+
+    expect(ranked[0]).toBe(productionSource.path);
+  });
+
   it("allows a parser-observed type reference to enter without lexical support", () => {
     const rootPath = "/repo";
     const facade = file(rootPath, "src/workflow/ResolverFacade.java");
