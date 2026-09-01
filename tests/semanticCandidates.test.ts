@@ -855,6 +855,34 @@ describe("model-based semantic candidates", () => {
     expect(result.enrichedPaths).toContain(implementation.path);
   });
 
+  it("orders direct callees ahead of reverse callers and shared-call inferences", () => {
+    const rootPath = "/repo";
+    const seed = file(rootPath, "src/workflow.ts");
+    const directCallee = file(rootPath, "src/direct-state.ts");
+    const reverseCaller = file(rootPath, "src/reverse-caller.ts");
+    const sharedTarget = file(rootPath, "src/shared-state.ts");
+    const filesByPath = new Map(
+      [seed, directCallee, reverseCaller, sharedTarget].map((candidate) => [candidate.path, candidate])
+    );
+    const ranked = rankEvidenceBackedGraphCandidates({
+      seedPaths: [seed.path],
+      edges: [
+        edge(rootPath, seed.path, directCallee.path, "call"),
+        edge(rootPath, reverseCaller.path, seed.path, "call"),
+        edge(rootPath, seed.path, sharedTarget.path, "shared_call_target")
+      ],
+      filesByPath,
+      evidenceRankings: [{
+        channel: "semantic",
+        paths: [sharedTarget.path, reverseCaller.path, directCallee.path]
+      }]
+    });
+
+    expect(ranked[0]).toBe(directCallee.path);
+    expect(ranked.indexOf(directCallee.path)).toBeLessThan(ranked.indexOf(reverseCaller.path));
+    expect(ranked.indexOf(directCallee.path)).toBeLessThan(ranked.indexOf(sharedTarget.path));
+  });
+
   it("uses model-backed production probes only through precise parser relationships", () => {
     const rootPath = "/repo";
     const leaders = Array.from({ length: 64 }, (_, index) =>
