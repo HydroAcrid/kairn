@@ -75,6 +75,7 @@ const MODEL_INITIAL_GRAPH_RESERVE = 16;
 const MAX_TEST_GRAPH_PROBE_PATHS = 192;
 const GRAPH_ENRICHMENT_CAPACITY =
   DEFAULT_ENRICHED_CANDIDATE_LIMIT - DEFAULT_INITIAL_CANDIDATE_LIMIT;
+const GRAPH_PRECISION_RESERVE = Math.floor(GRAPH_ENRICHMENT_CAPACITY * 3 / 8);
 const MAX_GRAPH_CONSENSUS_SUPPORT_SEEDS = 3;
 
 export function buildModelCandidateUnion(input: {
@@ -332,16 +333,28 @@ export function buildModelCandidateUnion(input: {
       : baseRankings,
     limit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
   }).filter((filePath) => filesByPath.has(filePath));
-  const graphCorePaths = reciprocalRankFuse({
+  const graphConsensusWeightedOrder = reciprocalRankFuse({
     hardPaths: [],
     rankings: [
       { channel: "graph", paths: graphPaths },
       ...(graphConsensusPaths.length > 0
-        ? [{ channel: "graph_consensus" as const, paths: graphConsensusPaths }]
+        ? [
+            { channel: "graph_consensus" as const, paths: graphConsensusPaths },
+            { channel: "graph_consensus" as const, paths: graphConsensusPaths }
+          ]
         : [])
     ],
-    limit: GRAPH_ENRICHMENT_CAPACITY
+    limit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
   }).filter((filePath) => filesByPath.has(filePath));
+  // Keep a bounded precision core so weighting consensus cannot displace
+  // direct parser relationships. Fill the remaining enrichment capacity with
+  // RRF agreement, giving multi-seed graph consensus two votes over the
+  // single-seed lane. This makes candidate coverage stable under small model
+  // rank drift without enlarging the 128-file public bound.
+  const graphCorePaths = uniquePaths([
+    ...graphPaths.slice(0, GRAPH_PRECISION_RESERVE),
+    ...graphConsensusWeightedOrder
+  ]).slice(0, GRAPH_ENRICHMENT_CAPACITY);
   // Preserve the complete parser-precision/consensus core before admitting
   // the weaker reverse-import relation. The tail is still model-based:
   // importer candidates require their own semantic evidence. A two-to-one
