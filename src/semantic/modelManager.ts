@@ -293,7 +293,8 @@ function validateManifest(manifest: SemanticModelManifest): void {
       "semantic-documents-v5",
       "semantic-documents-v6",
       "semantic-documents-v7",
-      "semantic-documents-v8"
+      "semantic-documents-v8",
+      "semantic-documents-v9"
     ].includes(manifest.documentSchemaVersion) ||
     manifest.runtime.library !== "kairn-onnx-wasm-v1" ||
     manifest.runtime.modelFilePath !== "onnx/model.onnx" ||

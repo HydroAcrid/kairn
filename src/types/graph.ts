@@ -222,7 +222,8 @@ export type SemanticDocumentSchemaVersion =
   | "semantic-documents-v5"
   | "semantic-documents-v6"
   | "semantic-documents-v7"
-  | "semantic-documents-v8";
+  | "semantic-documents-v8"
+  | "semantic-documents-v9";
 
 export type SemanticDocumentRecord = {
   rootPath: string;

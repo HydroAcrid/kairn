@@ -12,11 +12,14 @@ import { readTextFile } from "../retrieval/readSource.js";
 import { sha256 } from "../utils/hash.js";
 import { estimateTokens } from "../utils/tokens.js";
 
-export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v8" as const;
-// Keep structured metadata plus representative source within a compact CPU
-// inference window. The model still receives multiple regions from large
-// files, while cold indexing cost remains proportional to useful evidence.
-const MAX_DOCUMENT_CHARS = 512;
+export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v9" as const;
+// Jina v2 accepts 512 model tokens. Repository code averages roughly three to
+// four characters per token, so 1,500 characters preserves the behavioral
+// context the model needs without routinely crossing its tokenizer limit.
+// The previous 512-character document cap improved cold indexing time but
+// measurably regressed frozen candidate coverage by starving ordinary source
+// files of implementation evidence.
+const MAX_DOCUMENT_CHARS = 1_500;
 const MIN_SOURCE_BODY_CHARS = 112;
 const MAX_FILE_SYMBOLS = 12;
 const MAX_DIRECT_IMPORTS = 4;
