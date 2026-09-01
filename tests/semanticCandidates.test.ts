@@ -2023,11 +2023,14 @@ describe("model-based semantic candidates", () => {
         maxDocuments: files.length + 12
       });
       const symbolDocuments = documents.filter((document) => document.kind === "symbol");
-      expect(symbolDocuments).toHaveLength(files.length);
+      expect(symbolDocuments).toHaveLength(12);
       expect(new Set(symbolDocuments.map((document) => document.filePath))).toEqual(
         new Set(files.map((record) => record.path))
       );
-      expect(documents).toHaveLength(files.length * 2);
+      expect(Math.max(...files.map((record) =>
+        symbolDocuments.filter((document) => document.filePath === record.path).length
+      ))).toBe(2);
+      expect(documents).toHaveLength(files.length + 12);
     } finally {
       fs.rmSync(rootPath, { recursive: true, force: true });
     }
@@ -2246,6 +2249,65 @@ describe("model-based semantic candidates", () => {
       expect(fileDocument.text).not.toContain("declared symbols: ImportDeclaration");
       expect(documents.filter((document) => document.kind === "symbol").map((document) => document.symbol))
         .not.toContain("ImportDeclaration");
+    } finally {
+      fs.rmSync(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it("uses a complementary inner body when a wrapper is the only outer declaration", () => {
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-inner-body-"));
+    try {
+      const filePath = "src/account.ts";
+      fs.mkdirSync(path.join(rootPath, "src"), { recursive: true });
+      fs.writeFileSync(path.join(rootPath, filePath), [
+        "export function installAccount(User: unknown) {",
+        "  async function removeGeneratedCredentials() {",
+        "    return 'credential cleanup implementation';",
+        "  }",
+        "  function tinyCallback() {}",
+        "}"
+      ].join("\n"));
+      const symbols = [
+        { name: "installAccount", startLine: 1, endLine: 6, exported: true },
+        { name: "removeGeneratedCredentials", startLine: 2, endLine: 4, exported: false },
+        { name: "tinyCallback", startLine: 5, endLine: 5, exported: false }
+      ].map((symbol) => ({
+        rootPath,
+        filePath,
+        name: symbol.name,
+        kind: "function" as const,
+        exported: symbol.exported,
+        startLine: symbol.startLine,
+        endLine: symbol.endLine,
+        signature: `function ${symbol.name}()`
+      }));
+      const documents = buildSemanticDocuments({
+        rootPath,
+        graph: {
+          rootPath,
+          files: [file(rootPath, filePath)],
+          parsedFiles: [{
+            rootPath,
+            filePath,
+            language: "typescript",
+            imports: [],
+            hasErrors: false,
+            symbols
+          }],
+          symbols,
+          edges: []
+        },
+        maxDocuments: 3
+      });
+
+      const selectedSymbols = documents
+        .filter((document) => document.kind === "symbol")
+        .map((document) => document.symbol);
+      expect(selectedSymbols).toHaveLength(2);
+      expect(selectedSymbols).toEqual(expect.arrayContaining([
+        "installAccount",
+        "removeGeneratedCredentials"
+      ]));
     } finally {
       fs.rmSync(rootPath, { recursive: true, force: true });
     }

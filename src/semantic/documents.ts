@@ -21,7 +21,7 @@ const MIN_SOURCE_BODY_CHARS = 112;
 const MAX_FILE_SYMBOLS = 12;
 const MAX_DIRECT_IMPORTS = 4;
 const MAX_DOCUMENTATION_SNIPPETS = 3;
-const MAX_SYMBOL_DOCUMENTS_PER_FILE = 1;
+const MAX_SYMBOL_DOCUMENTS_PER_FILE = 2;
 
 export function buildSemanticDocuments(input: {
   rootPath: string;
@@ -49,7 +49,8 @@ export function buildSemanticDocuments(input: {
         return document
           ? {
               document,
-              spanLines: Math.max(1, symbol.endLine - symbol.startLine + 1)
+              spanLines: Math.max(1, symbol.endLine - symbol.startLine + 1),
+              outer: isOuterBehavioralSymbol(symbol, symbols)
             }
           : undefined;
       })
@@ -193,7 +194,7 @@ function stableEligibleFiles(files: FileRecord[]): FileRecord[] {
 
 function groupSymbols(symbols: SymbolRecord[]): Map<string, SymbolRecord[]> {
   const grouped = new Map<string, SymbolRecord[]>();
-  for (const symbol of semanticBehaviorSymbols(symbols).sort((left, right) =>
+  for (const symbol of behaviorSymbols(symbols).sort((left, right) =>
     left.filePath.localeCompare(right.filePath) ||
     left.startLine - right.startLine ||
     left.name.localeCompare(right.name)
@@ -204,13 +205,19 @@ function groupSymbols(symbols: SymbolRecord[]): Map<string, SymbolRecord[]> {
 }
 
 function semanticBehaviorSymbols(symbols: SymbolRecord[]): SymbolRecord[] {
-  const behavioral = symbols.filter((symbol) =>
+  const behavioral = behaviorSymbols(symbols);
+  return behavioral.filter((symbol) => isOuterBehavioralSymbol(symbol, behavioral));
+}
+
+function behaviorSymbols(symbols: SymbolRecord[]): SymbolRecord[] {
+  return symbols.filter((symbol) =>
     symbol.exported ||
     ["function", "class", "interface", "type", "component", "default"].includes(symbol.kind)
   );
-  return behavioral.filter((symbol) =>
-    symbol.exported ||
-    !behavioral.some((parent) =>
+}
+
+function isOuterBehavioralSymbol(symbol: SymbolRecord, symbols: SymbolRecord[]): boolean {
+  return symbol.exported || !symbols.some((parent) =>
       parent !== symbol &&
       parent.filePath === symbol.filePath &&
       parent.startLine <= symbol.startLine &&
@@ -219,8 +226,7 @@ function semanticBehaviorSymbols(symbols: SymbolRecord[]): SymbolRecord[] {
         parent.startLine < symbol.startLine ||
         parent.endLine > symbol.endLine
       )
-    )
-  );
+    );
 }
 
 function representativeSource(content: string, maxChars: number): string {
@@ -379,6 +385,7 @@ function uniqueDocuments(documents: SemanticDocumentRecord[]): SemanticDocumentR
 type SemanticSymbolDocumentCandidate = {
   document: SemanticDocumentRecord;
   spanLines: number;
+  outer: boolean;
 };
 
 function uniqueSemanticContent(
@@ -407,13 +414,29 @@ function allocateSymbolDocuments(
       documents
     }))
     .sort((left, right) => left.filePath.localeCompare(right.filePath));
-  const coverageBudget = Math.min(Math.max(0, Math.floor(budget)), entries.length);
+  let remaining = Math.min(
+    Math.max(0, Math.floor(budget)),
+    entries.reduce(
+      (sum, entry) => sum + Math.min(MAX_SYMBOL_DOCUMENTS_PER_FILE, entry.documents.length),
+      0
+    )
+  );
+  const allocations = new Map(entries.map((entry) => [entry.filePath, 0]));
 
   // Maximize repository coverage first. When the configured global cap cannot
   // fit every file, sample the stable path-ordered inventory rather than
   // favoring filenames or repositories with more declarations.
-  return evenlySampleIncludingEndpoints(entries, coverageBudget).flatMap((entry) =>
-    selectBehavioralSymbolDocuments(entry.documents, 1)
+  for (let depth = 1; depth <= MAX_SYMBOL_DOCUMENTS_PER_FILE && remaining > 0; depth += 1) {
+    const eligible = entries.filter((entry) => entry.documents.length >= depth);
+    const selected = evenlySampleIncludingEndpoints(eligible, Math.min(remaining, eligible.length));
+    for (const entry of selected) {
+      allocations.set(entry.filePath, (allocations.get(entry.filePath) ?? 0) + 1);
+    }
+    remaining -= selected.length;
+  }
+
+  return entries.flatMap((entry) =>
+    selectBehavioralSymbolDocuments(entry.documents, allocations.get(entry.filePath) ?? 0)
       .map((candidate) => candidate.document)
   );
 }
@@ -424,21 +447,24 @@ function selectBehavioralSymbolDocuments(
 ): SemanticSymbolDocumentCandidate[] {
   if (count <= 0) return [];
   if (count >= candidates.length) return [...candidates];
-  const largestCount = Math.max(1, Math.ceil(count / 2));
-  const largest = [...candidates]
+  const orderedOuter = candidates
+    .filter((candidate) => candidate.outer)
     .sort((left, right) =>
       right.spanLines - left.spanLines ||
       (left.document.symbol ?? "").localeCompare(right.document.symbol ?? "") ||
       left.document.id.localeCompare(right.document.id)
-    )
-    .slice(0, largestCount);
-  const selectedIds = new Set(largest.map((candidate) => candidate.document.id));
-  const remaining = candidates.filter((candidate) => !selectedIds.has(candidate.document.id));
-  const sourceCoverage = evenlySampleIncludingEndpoints(
-    remaining,
-    Math.min(count - largest.length, remaining.length)
-  );
-  return [...largest, ...sourceCoverage];
+    );
+  const selected = orderedOuter.slice(0, count);
+  if (selected.length >= count) return selected;
+  const selectedIds = new Set(selected.map((candidate) => candidate.document.id));
+  const nested = candidates
+    .filter((candidate) => !candidate.outer && !selectedIds.has(candidate.document.id))
+    .sort((left, right) =>
+      right.spanLines - left.spanLines ||
+      (left.document.symbol ?? "").localeCompare(right.document.symbol ?? "") ||
+      left.document.id.localeCompare(right.document.id)
+    );
+  return [...selected, ...nested.slice(0, count - selected.length)];
 }
 
 function evenlySample<T>(values: T[], count: number): T[] {
