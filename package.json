@@ -16,7 +16,7 @@
     "THIRD_PARTY_NOTICES.md"
   ],
   "scripts": {
-    "build": "tsup src/cli.ts --format esm --target node20 --dts --clean --external typescript --external web-tree-sitter --external @repomix/tree-sitter-wasms",
+    "build": "tsup src/cli.ts --format esm --target node20 --dts --clean --external typescript --external web-tree-sitter --external @repomix/tree-sitter-wasms --external onnxruntime-node",
     "dev": "tsx src/cli.ts",
     "kairn": "node dist/cli.js",
     "preinstall": "node ./scripts/preinstall-check.cjs",
@@ -128,7 +128,7 @@
     "commander": "^14.0.3",
     "fast-glob": "^3.3.3",
     "ignore": "^7.0.5",
-    "onnxruntime-web": "1.27.0",
+    "onnxruntime-web": "1.29.0",
     "picocolors": "^1.1.1",
     "simple-git": "^3.36.0",
     "typescript": "^6.0.3",
@@ -142,5 +142,8 @@
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "vitest": "^4.1.5"
+  },
+  "optionalDependencies": {
+    "onnxruntime-node": "1.29.0"
   }
 }

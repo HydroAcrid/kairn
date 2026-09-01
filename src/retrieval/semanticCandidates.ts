@@ -124,6 +124,7 @@ export async function searchSemanticCandidates(input: {
         requestedMode: input.config.mode,
         servedMode: input.config.mode,
         semanticModelId: model.manifest.modelId,
+        semanticRuntimeBackend: model.runtimeBackend,
         semanticIndexStatus: "ready",
         documentCount: input.documents.length,
         embeddingCount: eligibleEmbeddings.length,

@@ -21,6 +21,7 @@ export type SemanticRetrieverStatus = {
   requestedMode: CandidateGeneratorMode;
   servedMode: CandidateGeneratorMode | "fallback";
   semanticModelId?: string;
+  semanticRuntimeBackend?: "node" | "wasm";
   semanticIndexStatus: SemanticIndexStatus;
   semanticFallbackReason?: string;
   documentCount: number;
