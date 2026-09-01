@@ -720,7 +720,6 @@ export function rankEvidenceBackedGraphCandidates(input: {
     )
     .sort((left, right) => ordering === "support"
       ? (
-          Number(right.sourceTestPair) - Number(left.sourceTestPair) ||
           supportWeightedScore(right) - supportWeightedScore(left) ||
           right.seedRanks.size - left.seedRanks.size ||
           right.precision - left.precision ||
