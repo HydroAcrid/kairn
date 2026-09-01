@@ -977,6 +977,39 @@ describe("model-based semantic candidates", () => {
     ]);
   });
 
+  it("keeps a corroborated exact source-test pair ahead of generic consensus fan-in", () => {
+    const rootPath = "/repo";
+    const seeds = Array.from({ length: 80 }, (_, index) =>
+      file(rootPath, `internal/runtime/seed-${String(index).padStart(2, "0")}.go`)
+    );
+    const requiredSource = file(rootPath, "internal/runtime/marks.go");
+    const genericNeighbors = Array.from({ length: 70 }, (_, index) =>
+      file(rootPath, `internal/runtime/helper-${String(index).padStart(2, "0")}.go`)
+    );
+    const filesByPath = new Map(
+      [...seeds, requiredSource, ...genericNeighbors]
+        .map((candidate) => [candidate.path, candidate])
+    );
+    const ranked = rankEvidenceBackedGraphCandidates({
+      seedPaths: seeds.map((seed) => seed.path),
+      edges: [
+        edge(rootPath, seeds[45]!.path, requiredSource.path, "call"),
+        edge(rootPath, seeds[68]!.path, requiredSource.path, "call"),
+        edge(rootPath, seeds[79]!.path, requiredSource.path, "test_for"),
+        ...genericNeighbors.flatMap((neighbor) => [
+          edge(rootPath, seeds[0]!.path, neighbor.path, "type_reference"),
+          edge(rootPath, seeds[1]!.path, neighbor.path, "type_reference")
+        ])
+      ],
+      filesByPath,
+      evidenceRankings: [],
+      minimumSeedSupport: 2,
+      ordering: "support"
+    });
+
+    expect(ranked[0]).toBe(requiredSource.path);
+  });
+
   it("saturates graph consensus so broad weak fan-in cannot beat strong independent seeds", () => {
     const rootPath = "/repo";
     const seeds = Array.from({ length: 12 }, (_, index) =>
