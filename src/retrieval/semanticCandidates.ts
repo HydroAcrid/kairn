@@ -39,9 +39,9 @@ const MAX_FENCED_QUERY_CANDIDATES = 12;
 const SEMANTIC_QUERY_WINDOW_CHARS = 560;
 const SEMANTIC_QUERY_WINDOW_OVERLAP_CHARS = 80;
 const SEMANTIC_DIAGNOSTIC_RANK_LIMIT = 512;
-const SEMANTIC_SERVING_HEADLINE_CHARS = 320;
-const SEMANTIC_SERVING_SYNOPSIS_CHARS = 480;
-const SEMANTIC_SERVING_EVIDENCE_CHARS = 180;
+const SEMANTIC_SYNOPSIS_HEADLINE_CHARS = 320;
+const SEMANTIC_SYNOPSIS_NARRATIVE_CHARS = 620;
+const SEMANTIC_EVIDENCE_ENDPOINT_CHARS = 720;
 const MAX_SEMANTIC_CONSENSUS_RESERVE = 16;
 
 export async function searchSemanticCandidates(input: {
@@ -231,38 +231,28 @@ export function buildSemanticServingQueries(query: string): string[] {
     .filter((candidate) => candidate.kind === "narrative")
     .slice(-2);
   const fences = candidates.filter((candidate) => candidate.kind === "fence");
-  const headlineView = headline?.text.slice(0, SEMANTIC_SERVING_HEADLINE_CHARS).trim();
-  const parts = [headlineView, ...narratives.map((narrative) => narrative.text)]
-    .filter((value): value is string => Boolean(value));
-  const synopsis = boundedSemanticView(parts, SEMANTIC_SERVING_SYNOPSIS_CHARS);
-  const evidenceSynopsis = boundedSemanticView(
-    evenlySampleIncludingEndpoints(fences, Math.min(2, fences.length))
-      .map((candidate) => candidate.text),
-    SEMANTIC_SERVING_EVIDENCE_CHARS
+  const parts = [...new Set(
+    [
+      headline?.text.slice(0, SEMANTIC_SYNOPSIS_HEADLINE_CHARS).trim(),
+      ...narratives.map((narrative) =>
+        narrative.text.slice(0, SEMANTIC_SYNOPSIS_NARRATIVE_CHARS).trim()
+      )
+    ].filter((value): value is string => Boolean(value))
+  )];
+  const synopsis = normalizeSemanticQuery(parts.join("\n\n")).slice(0, MAX_QUERY_CHARS).trim();
+  const evidenceParts = evenlySampleIncludingEndpoints(
+    fences,
+    Math.min(2, fences.length)
+  ).map((candidate) =>
+    candidate.text.slice(0, SEMANTIC_EVIDENCE_ENDPOINT_CHARS).trim()
   );
+  const evidenceSynopsis = normalizeSemanticQuery(
+    [...new Set(evidenceParts)].join("\n\n")
+  ).slice(0, MAX_QUERY_CHARS).trim();
   return [...new Set(
-    [headlineView, synopsis, evidenceSynopsis]
+    [headline?.text, synopsis, evidenceSynopsis]
       .filter((value): value is string => Boolean(value))
   )].slice(0, 3);
-}
-
-function boundedSemanticView(parts: string[], limit: number): string {
-  const normalizedParts = [...new Set(parts
-    .map((part) => normalizeSemanticQuery(part).trim())
-    .filter(Boolean))];
-  if (normalizedParts.length === 0) return "";
-  const separator = "\n\n";
-  const contentBudget = Math.max(
-    normalizedParts.length,
-    limit - separator.length * (normalizedParts.length - 1)
-  );
-  const baseShare = Math.floor(contentBudget / normalizedParts.length);
-  let remainder = contentBudget % normalizedParts.length;
-  return normalizedParts.map((part) => {
-    const share = baseShare + (remainder > 0 ? 1 : 0);
-    remainder = Math.max(0, remainder - 1);
-    return part.slice(0, share).trim();
-  }).filter(Boolean).join(separator).slice(0, limit).trim();
 }
 
 export function selectSemanticQueryViewIndexes(

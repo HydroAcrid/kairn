@@ -199,13 +199,13 @@ async function createLocalEmbeddingModel(
   const embed = async (texts: string[], prefix: string): Promise<Float32Array[]> => {
     if (texts.length === 0) return [];
     const ort = await getOrtRuntime();
-    const vectors: Float32Array[] = [];
     // Dynamically quantized ONNX graphs can choose activation scales across
     // the complete input tensor. Running unrelated texts in one tensor then
     // makes an individual embedding depend on its batch companions even when
-    // attention-mask pooling is correct. Single-row inference keeps content,
-    // model, tokenizer, and document schema as the complete embedding key.
-    for (const text of texts) {
+    // attention-mask pooling is correct. Independent single-row runs keep
+    // content, model, tokenizer, and document schema as the complete embedding
+    // key while allowing a bounded query set to use the runtime concurrently.
+    return Promise.all(texts.map(async (text) => {
       const encoded = [encodeBounded(loaded.tokenizer, `${prefix}${text}`, manifest.maxTokens)];
       const feeds = buildFeeds(ort, loaded.session.inputNames, encoded);
       const outputs = await loaded.session.run(feeds);
@@ -218,9 +218,8 @@ async function createLocalEmbeddingModel(
       if (!vector) {
         throw new Error(`Semantic model ${manifest.modelId} returned an incomplete embedding.`);
       }
-      vectors.push(vector);
-    }
-    return vectors;
+      return vector;
+    }));
   };
 
   return {
