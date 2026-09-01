@@ -50,6 +50,7 @@
     "ranker:readiness": "tsx scripts/build-ranker-readiness-checkpoint.ts",
     "ranker:probe-diagnostic": "tsx scripts/build-probe-ranker-diagnostic.ts",
     "ranker:evaluate-probe": "tsx scripts/evaluate-probe-ranker-diagnostic.ts",
+    "ranker:evaluate-semantic-documents": "python3 scripts/evaluate-semantic-document-features.py",
     "ranker:evaluate-shallow": "python3 scripts/evaluate-shallow-ranker-diagnostic.py",
     "ranker:rankability-input": "tsx scripts/build-rankability-input.ts",
     "semantic:evaluate-model": "tsx scripts/evaluate-semantic-model.ts",

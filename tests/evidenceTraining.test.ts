@@ -1233,6 +1233,38 @@ describe("public evidence ranker training", () => {
     expect(manifest.holdout).toMatchObject({ rows: 4, status: "sealed_not_evaluated" });
   });
 
+  it("exports a runtime-valid pairwise ranker with grouped objective metadata", () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-pairwise-ranker-training-"));
+    const output = path.join(temporary, "pairwise.json");
+    const python = pythonInvocation();
+    const result = spawnSync(python.command, [
+      ...python.prefix,
+      path.resolve("scripts/train-evidence-ranker.py"),
+      "--input", path.resolve("benchmarks/evidence-training.sample.jsonl"),
+      "--out", output,
+      "--model-id", "sample-pairwise-evidence-v1",
+      "--objective", "pairwise",
+      "--node", process.execPath,
+      "--public-data-only"
+    ], { cwd: process.cwd(), encoding: "utf8" });
+
+    try {
+      expect(result.status, result.stderr).toBe(0);
+      expect(validateEvidenceRankerArtifact(JSON.parse(fs.readFileSync(output, "utf8"))).modelId)
+        .toBe("sample-pairwise-evidence-v1");
+      expect(JSON.parse(fs.readFileSync(
+        path.join(temporary, "sample-pairwise-evidence-v1.training-manifest.json"),
+        "utf8"
+      ))).toMatchObject({
+        trainingObjective: "pairwise",
+        trainingPairs: 2,
+        crossValidationGroup: "repositoryLineageId"
+      });
+    } finally {
+      fs.rmSync(temporary, { recursive: true, force: true });
+    }
+  });
+
   it("freezes train and calibration data before a detached holdout is opened", () => {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-ranker-detached-holdout-"));
     const input = path.join(temporary, "train-calibration.jsonl");
