@@ -12,6 +12,8 @@ type Options = {
   outPath: string;
   summaryPath: string;
   baseRowsPath?: string;
+  priorBaseRowsPath?: string;
+  priorReviewedRowsPath?: string;
   dropZeroPositiveSynthetic: boolean;
 };
 
@@ -55,6 +57,22 @@ if (manifestCases.length !== reportCases.size) {
 
 const baseRowsBytes = options.baseRowsPath ? fs.readFileSync(options.baseRowsPath) : undefined;
 const baseRows = baseRowsBytes ? parseBaseRows(baseRowsBytes) : [];
+const priorBaseRowsBytes = options.priorBaseRowsPath
+  ? fs.readFileSync(options.priorBaseRowsPath)
+  : undefined;
+const priorReviewedRowsBytes = options.priorReviewedRowsPath
+  ? fs.readFileSync(options.priorReviewedRowsPath)
+  : undefined;
+if (Boolean(priorBaseRowsBytes) !== Boolean(priorReviewedRowsBytes)) {
+  throw new Error("--prior-base-rows and --prior-reviewed-rows must be supplied together");
+}
+const carriedNegativeLabels = priorBaseRowsBytes && priorReviewedRowsBytes
+  ? reviewedNegativeDelta(
+      parseBaseRows(priorBaseRowsBytes),
+      parseBaseRows(priorReviewedRowsBytes)
+    )
+  : new Map<string, Record<string, unknown>>();
+const usedCarriedNegativeLabels = new Set<string>();
 const rows: Record<string, unknown>[] = [...baseRows];
 const baseCaseIds = new Set(baseRows.map((row) => string(row.caseGroupId, "base row caseGroupId")));
 const splitCounts = new Map<string, number>();
@@ -92,11 +110,38 @@ for (let caseIndex = 0; caseIndex < manifestCases.length; caseIndex += 1) {
       diagnosticCandidates[candidateIndex],
       `${caseId}.${candidateSource}[${candidateIndex}]`
     );
-    if (candidate.label !== 0 && candidate.label !== 1) continue;
-    const provenance = string(
-      candidate.labelProvenance,
-      `${caseId}.probeCandidates[${candidateIndex}].labelProvenance`
-    );
+    const candidatePath = string(candidate.path, `${caseId}.candidatePath`);
+    const carryIdentity = `${caseId}\0${candidatePath}`;
+    const carriedNegative = carriedNegativeLabels.get(carryIdentity);
+    if (
+      carriedNegative &&
+      candidate.label === 1
+    ) {
+      throw new Error(`${caseId}:${candidatePath}: reviewed negative conflicts with a positive label`);
+    }
+    const label = candidate.label === 0 || candidate.label === 1
+      ? candidate.label
+      : carriedNegative
+        ? 0
+        : undefined;
+    if (label === undefined) continue;
+    const provenance = carriedNegative && candidate.label !== 0
+      ? "explicit_noise_or_excluded"
+      : string(
+          candidate.labelProvenance,
+          `${caseId}.probeCandidates[${candidateIndex}].labelProvenance`
+        );
+    if (carriedNegative) {
+      if (split !== "train") {
+        throw new Error(`${caseId}:${candidatePath}: reviewed negatives are training-only`);
+      }
+      const priorLineage = string(carriedNegative.repositoryLineageId, "reviewed negative lineage");
+      const currentLineage = string(corpusCase.repositoryLineageId, `${caseId}.repositoryLineageId`);
+      if (priorLineage !== currentLineage) {
+        throw new Error(`${caseId}:${candidatePath}: reviewed negative lineage changed`);
+      }
+      usedCarriedNegativeLabels.add(carryIdentity);
+    }
     const features = record(
       candidate.features,
       `${caseId}.probeCandidates[${candidateIndex}].features`
@@ -108,12 +153,14 @@ for (let caseIndex = 0; caseIndex < manifestCases.length; caseIndex += 1) {
       split,
       language: string(corpusCase.language, `${caseId}.language`),
       scenario: string(corpusCase.scenario, `${caseId}.scenario`),
-      candidatePath: string(candidate.path, `${caseId}.candidatePath`),
+      candidatePath,
       isPublic: true,
       publicSourceUrl: string(corpusCase.publicSourceUrl, `${caseId}.publicSourceUrl`),
       dataOrigin: string(corpusCase.dataOrigin, `${caseId}.dataOrigin`),
-      label: candidate.label,
-      labelWeight: finite(candidate.labelWeight, `${caseId}.labelWeight`),
+      label,
+      labelWeight: carriedNegative && candidate.label !== 0
+        ? 1
+        : finite(candidate.labelWeight, `${caseId}.labelWeight`),
       labelProvenance: provenance,
       features: EVIDENCE_FEATURE_NAMES.map((feature) =>
         finite(features[feature], `${caseId}.features.${feature}`)
@@ -175,6 +222,24 @@ const summary = {
     rowCount: baseRows.length,
     caseCount: baseCaseIds.size
   } : undefined,
+  carriedReviewedNegatives: priorBaseRowsBytes && priorReviewedRowsBytes ? {
+    priorBaseRows: {
+      path: path.relative(process.cwd(), options.priorBaseRowsPath!).replace(/\\/g, "/"),
+      sha256: sha256(priorBaseRowsBytes)
+    },
+    priorReviewedRows: {
+      path: path.relative(process.cwd(), options.priorReviewedRowsPath!).replace(/\\/g, "/"),
+      sha256: sha256(priorReviewedRowsBytes)
+    },
+    discovered: carriedNegativeLabels.size,
+    applied: usedCarriedNegativeLabels.size,
+    unavailable: [...carriedNegativeLabels.keys()]
+      .filter((identity) => !usedCarriedNegativeLabels.has(identity))
+      .map((identity) => {
+        const [caseId, candidatePath] = identity.split("\0");
+        return { caseId, candidatePath };
+      })
+  } : undefined,
   labeledRowCount: rows.length,
   splitCaseCounts: Object.fromEntries([...splitCounts].sort()),
   labelProvenanceCounts: Object.fromEntries([...labelCounts].sort()),
@@ -210,8 +275,44 @@ function parseArgs(args: string[]): Options {
     outPath: required("--out"),
     summaryPath: required("--summary-out"),
     ...(values.get("--base-rows") ? { baseRowsPath: path.resolve(values.get("--base-rows")!) } : {}),
+    ...(values.get("--prior-base-rows")
+      ? { priorBaseRowsPath: path.resolve(values.get("--prior-base-rows")!) }
+      : {}),
+    ...(values.get("--prior-reviewed-rows")
+      ? { priorReviewedRowsPath: path.resolve(values.get("--prior-reviewed-rows")!) }
+      : {}),
     dropZeroPositiveSynthetic: values.get("--drop-zero-positive-synthetic") === "true"
   };
+}
+
+function reviewedNegativeDelta(
+  priorBaseRows: Record<string, unknown>[],
+  priorReviewedRows: Record<string, unknown>[]
+): Map<string, Record<string, unknown>> {
+  const baseIdentities = new Set(priorBaseRows.map((row) => [
+    string(row.caseGroupId, "prior base caseGroupId"),
+    string(row.candidatePath, "prior base candidatePath")
+  ].join("\0")));
+  const delta = new Map<string, Record<string, unknown>>();
+  for (const row of priorReviewedRows) {
+    const identity = [
+      string(row.caseGroupId, "prior reviewed caseGroupId"),
+      string(row.candidatePath, "prior reviewed candidatePath")
+    ].join("\0");
+    if (baseIdentities.has(identity)) continue;
+    if (
+      row.label !== 0 ||
+      row.labelWeight !== 1 ||
+      row.labelProvenance !== "explicit_noise_or_excluded" ||
+      row.split !== "train"
+    ) {
+      throw new Error(`${identity.replace("\0", ":")}: carried review is not a training negative`);
+    }
+    if (delta.has(identity)) throw new Error(`duplicate carried review ${identity.replace("\0", ":")}`);
+    delta.set(identity, row);
+  }
+  if (delta.size === 0) throw new Error("prior reviewed rows contain no added training negatives");
+  return delta;
 }
 
 function parseBaseRows(bytes: Buffer): Record<string, unknown>[] {

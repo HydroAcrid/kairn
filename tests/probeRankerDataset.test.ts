@@ -162,4 +162,114 @@ describe("probe ranker diagnostic dataset", () => {
       }
     });
   });
+
+  it("carries reviewed training negatives onto the current candidate features", () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-carried-negative-dataset-"));
+    const manifestPath = path.join(temporary, "manifest.json");
+    const reportPath = path.join(temporary, "report.json");
+    const priorBasePath = path.join(temporary, "prior-base.jsonl");
+    const priorReviewedPath = path.join(temporary, "prior-reviewed.jsonl");
+    const outputPath = path.join(temporary, "rows.jsonl");
+    const summaryPath = path.join(temporary, "summary.json");
+    const materializer = { kairnCommit: "a".repeat(40), intakeSha256: "b".repeat(64) };
+    const lineage = "https://example.test/repository";
+    const zeroFeatures = Object.fromEntries(EVIDENCE_FEATURE_NAMES.map((name) => [name, 0]));
+    const currentNegativeFeatures: Record<string, number> = {
+      ...zeroFeatures,
+      semantic: 0.73,
+      productionSource: 1
+    };
+    const positive = {
+      path: "src/required.ts",
+      features: { ...zeroFeatures, semantic: 0.9, productionSource: 1 },
+      label: 1,
+      labelWeight: 1,
+      labelProvenance: "required_source_oracle"
+    };
+    const candidateNegative = {
+      path: "src/reviewed-noise.ts",
+      features: currentNegativeFeatures
+    };
+    fs.writeFileSync(manifestPath, JSON.stringify({
+      schemaVersion: "ranker-corpus.v1",
+      featureSchemaVersion: "evidence-features-v4",
+      sealed: false,
+      status: "draft_for_label_review",
+      materializer,
+      cases: [{
+        id: "carried-case",
+        repositoryLineageId: lineage,
+        split: "train",
+        language: "typescript",
+        scenario: "source_localization",
+        publicSourceUrl: lineage,
+        dataOrigin: "public_benchmark",
+        trainingCandidates: [positive]
+      }]
+    }));
+    fs.writeFileSync(reportPath, JSON.stringify({
+      schemaVersion: "ranker-corpus-materialization-report.v1",
+      ...materializer,
+      cases: [{
+        id: "carried-case",
+        probeLimit: 512,
+        probeCandidates: [positive, candidateNegative]
+      }]
+    }));
+    const priorPositive = {
+      featureSchemaVersion: "evidence-features-v4",
+      repositoryLineageId: lineage,
+      caseGroupId: "carried-case",
+      split: "train",
+      language: "typescript",
+      scenario: "source_localization",
+      candidatePath: positive.path,
+      isPublic: true,
+      publicSourceUrl: lineage,
+      dataOrigin: "public_benchmark",
+      label: 1,
+      labelWeight: 1,
+      labelProvenance: "required_source_oracle",
+      features: EVIDENCE_FEATURE_NAMES.map(() => 0)
+    };
+    const priorNegative = {
+      ...priorPositive,
+      candidatePath: candidateNegative.path,
+      label: 0,
+      labelProvenance: "explicit_noise_or_excluded"
+    };
+    fs.writeFileSync(priorBasePath, `${JSON.stringify(priorPositive)}\n`);
+    fs.writeFileSync(
+      priorReviewedPath,
+      `${JSON.stringify(priorPositive)}\n${JSON.stringify(priorNegative)}\n`
+    );
+
+    const result = spawnSync(process.execPath, [
+      path.resolve("node_modules/tsx/dist/cli.mjs"),
+      path.resolve("scripts/build-probe-ranker-diagnostic.ts"),
+      "--manifest", manifestPath,
+      "--report", reportPath,
+      "--prior-base-rows", priorBasePath,
+      "--prior-reviewed-rows", priorReviewedPath,
+      "--out", outputPath,
+      "--summary-out", summaryPath
+    ], { cwd: process.cwd(), encoding: "utf8" });
+
+    expect(result.status, result.stderr).toBe(0);
+    const rows = fs.readFileSync(outputPath, "utf8").trim().split("\n").map((line) => JSON.parse(line));
+    expect(rows).toHaveLength(2);
+    expect(rows.find((row) => row.candidatePath === candidateNegative.path)).toMatchObject({
+      label: 0,
+      labelWeight: 1,
+      labelProvenance: "explicit_noise_or_excluded",
+      features: EVIDENCE_FEATURE_NAMES.map((name) => currentNegativeFeatures[name])
+    });
+    expect(JSON.parse(fs.readFileSync(summaryPath, "utf8"))).toMatchObject({
+      carriedReviewedNegatives: {
+        discovered: 1,
+        applied: 1,
+        unavailable: []
+      }
+    });
+  });
 });
