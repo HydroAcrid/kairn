@@ -226,11 +226,11 @@ export function buildSemanticQueries(query: string): string[] {
 /**
  * Serving uses at most three compact model queries so a broad issue template
  * cannot gain extra retrieval votes merely because it contains more sections.
- * The independent structural headline preserves concise task intent while a
- * bounded synopsis lets the model relate behavior described across multiple
- * issue sections. A separate fenced-evidence view preserves precise
- * diagnostics and reproductions. The embedding model—not task words or
- * filenames—decides relevance.
+ * Keep the structural headline and bounded narrative windows independent:
+ * concatenating separated behaviors into one embedding can dilute the exact
+ * mechanism that identifies the implementation. A separate fenced-evidence
+ * view preserves precise diagnostics and reproductions. The embedding
+ * model—not task words or filenames—decides relevance.
  *
  * The broader candidate/view builder remains available for offline diagnostics
  * and model-selection analysis.
@@ -242,15 +242,11 @@ export function buildSemanticServingQueries(query: string): string[] {
     .filter((candidate) => candidate.kind === "narrative")
     .slice(-2);
   const fences = candidates.filter((candidate) => candidate.kind === "fence");
-  const parts = [...new Set(
-    [
-      headline?.text.slice(0, SEMANTIC_SYNOPSIS_HEADLINE_CHARS).trim(),
-      ...narratives.map((narrative) =>
-        narrative.text.slice(0, SEMANTIC_SYNOPSIS_NARRATIVE_CHARS).trim()
-      )
-    ].filter((value): value is string => Boolean(value))
-  )];
-  const synopsis = normalizeSemanticQuery(parts.join("\n\n")).slice(0, MAX_QUERY_CHARS).trim();
+  const narrativeViews = narratives.map((narrative) =>
+    normalizeSemanticQuery(
+      narrative.text.slice(0, SEMANTIC_SYNOPSIS_NARRATIVE_CHARS)
+    ).slice(0, MAX_QUERY_CHARS).trim()
+  );
   const evidenceParts = evenlySampleIncludingEndpoints(
     fences,
     Math.min(2, fences.length)
@@ -261,7 +257,11 @@ export function buildSemanticServingQueries(query: string): string[] {
     [...new Set(evidenceParts)].join("\n\n")
   ).slice(0, MAX_QUERY_CHARS).trim();
   return [...new Set(
-    [headline?.text, synopsis, evidenceSynopsis]
+    [
+      headline?.text.slice(0, SEMANTIC_SYNOPSIS_HEADLINE_CHARS).trim(),
+      ...narrativeViews,
+      evidenceSynopsis
+    ]
       .filter((value): value is string => Boolean(value))
   )].slice(0, 3);
 }
