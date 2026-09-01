@@ -45,7 +45,12 @@ if (queryVectors.length !== semanticQueries.length) {
   throw new Error("Semantic runtime returned an incomplete benchmark query batch.");
 }
 
-const scanCorpus = buildScanCorpus(options.scanDocuments, model.manifest.dimensions);
+const scanCorpus = buildScanCorpus(
+  options.scanDocuments,
+  model.manifest.dimensions,
+  model.runtimeBackend,
+  model.runtimeId
+);
 const scanLatencies: number[] = [];
 for (let repeat = 0; repeat < Math.max(20, options.repeats); repeat += 1) {
   const started = performance.now();
@@ -147,7 +152,9 @@ function boundedCodeDocument(targetChars: number): string {
 
 function buildScanCorpus(
   count: number,
-  dimensions: number
+  dimensions: number,
+  runtimeBackend: SemanticEmbeddingRecord["runtimeBackend"],
+  runtimeId: string
 ): { documents: SemanticDocumentRecord[]; embeddings: SemanticEmbeddingRecord[] } {
   const documents: SemanticDocumentRecord[] = [];
   const embeddings: SemanticEmbeddingRecord[] = [];
@@ -174,6 +181,8 @@ function buildScanCorpus(
       documentId: id,
       documentHash: id,
       modelId: "benchmark",
+      runtimeBackend,
+      runtimeId,
       schemaVersion: SEMANTIC_DOCUMENT_SCHEMA_VERSION,
       dimensions,
       vector,

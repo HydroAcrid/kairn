@@ -152,13 +152,22 @@ type StratumMetrics = {
 export function evaluateBalancedRequiredSource(options: {
   cohortPath: string;
   repositoryRoot?: string;
+  candidateManifestPath?: string;
+  candidateReportPath?: string;
 }): BalancedRequiredSourceEvaluation {
   const cohortPath = path.resolve(options.cohortPath);
   const repositoryRoot = path.resolve(options.repositoryRoot ?? findRepositoryRoot(path.dirname(cohortPath)));
   const cohortBytes = fs.readFileSync(cohortPath);
   const cohort = parseCohort(JSON.parse(cohortBytes.toString("utf8")) as unknown);
-  const manifestBytes = verifiedArtifact(repositoryRoot, cohort.inputs.candidateManifest);
-  const reportBytes = verifiedArtifact(repositoryRoot, cohort.inputs.candidateReport);
+  if (Boolean(options.candidateManifestPath) !== Boolean(options.candidateReportPath)) {
+    throw new Error("candidate manifest and report overrides must be provided together");
+  }
+  const manifestBytes = options.candidateManifestPath
+    ? explicitDevelopmentArtifact(repositoryRoot, options.candidateManifestPath, "candidate manifest")
+    : verifiedArtifact(repositoryRoot, cohort.inputs.candidateManifest);
+  const reportBytes = options.candidateReportPath
+    ? explicitDevelopmentArtifact(repositoryRoot, options.candidateReportPath, "candidate report")
+    : verifiedArtifact(repositoryRoot, cohort.inputs.candidateReport);
   const modelBytes = verifiedArtifact(repositoryRoot, cohort.inputs.baselineModel);
   const source = JSON.parse(manifestBytes.toString("utf8")) as SourceManifest;
   const report = JSON.parse(reportBytes.toString("utf8")) as { cases: SourceReportCase[] };
@@ -231,6 +240,22 @@ export function evaluateBalancedRequiredSource(options: {
     },
     cases: caseRows
   };
+}
+
+function explicitDevelopmentArtifact(
+  repositoryRoot: string,
+  artifactPath: string,
+  label: string
+): Buffer {
+  const resolved = path.resolve(repositoryRoot, artifactPath);
+  const relative = path.relative(repositoryRoot, resolved);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error(`${label} override must stay inside the repository`);
+  }
+  if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
+    throw new Error(`${label} override is missing: ${artifactPath}`);
+  }
+  return fs.readFileSync(resolved);
 }
 
 export function formatBalancedRequiredSourceMarkdown(value: BalancedRequiredSourceEvaluation): string {

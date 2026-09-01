@@ -7,14 +7,22 @@ import { evaluateBalancedRequiredSource, formatBalancedRequiredSourceMarkdown } 
 const args = process.argv.slice(2).filter((item) => item !== "--");
 let cohort = "benchmarks/cohorts/v02c-balanced-required-source.v1.json";
 let out = "artifacts/balanced-required-source.v185.json";
+let candidateManifest: string | undefined;
+let candidateReport: string | undefined;
 for (let index = 0; index < args.length; index += 1) {
   const item = args[index]!;
   if (item === "--cohort") cohort = requiredValue(args, ++index, item);
   else if (item === "--out") out = requiredValue(args, ++index, item);
+  else if (item === "--candidate-manifest") candidateManifest = requiredValue(args, ++index, item);
+  else if (item === "--candidate-report") candidateReport = requiredValue(args, ++index, item);
   else throw new Error(`unknown argument '${item}'`);
 }
 
-const evaluation = evaluateBalancedRequiredSource({ cohortPath: cohort });
+const evaluation = evaluateBalancedRequiredSource({
+  cohortPath: cohort,
+  ...(candidateManifest ? { candidateManifestPath: candidateManifest } : {}),
+  ...(candidateReport ? { candidateReportPath: candidateReport } : {})
+});
 const target = path.resolve(out);
 fs.mkdirSync(path.dirname(target), { recursive: true });
 fs.writeFileSync(target, `${JSON.stringify(evaluation, null, 2)}\n`, "utf8");

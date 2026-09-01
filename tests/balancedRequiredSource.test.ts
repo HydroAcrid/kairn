@@ -53,4 +53,11 @@ describe("balanced required-source stopping discipline", () => {
     expect(() => evaluateBalancedRequiredSource({ cohortPath: target, repositoryRoot: process.cwd() }))
       .toThrow("violates deterministic first-case selection rule");
   });
+
+  it("requires candidate manifest and report overrides as one frozen pair", () => {
+    expect(() => evaluateBalancedRequiredSource({
+      cohortPath,
+      candidateManifestPath: "artifacts/candidate-only.json"
+    })).toThrow("candidate manifest and report overrides must be provided together");
+  });
 });
