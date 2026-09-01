@@ -86,6 +86,25 @@ def verify_frozen_pool(
                 raise ValueError(f"{case_id}:{left_row['path']}: base feature vector changed")
 
 
+def verify_baseline_evaluation_pool(
+    evaluation: dict[str, Any],
+    manifest_sha256: str,
+    report_sha256: str,
+    label: str,
+) -> None:
+    inputs = evaluation.get("inputs")
+    if not isinstance(inputs, dict):
+        raise ValueError(f"{label}: baseline evaluation inputs are missing")
+    manifest = inputs.get("manifest")
+    report = inputs.get("report")
+    if not isinstance(manifest, dict) or manifest.get("sha256") != manifest_sha256:
+        raise ValueError(f"{label}: baseline evaluation manifest differs from the frozen pool")
+    if not isinstance(report, dict) or report.get("sha256") != report_sha256:
+        raise ValueError(f"{label}: baseline evaluation report differs from the selector probe")
+    if evaluation.get("candidatePool") != "auto":
+        raise ValueError(f"{label}: baseline evaluation must use the automatic probe pool")
+
+
 def interaction_maps(report: dict[str, Any]) -> dict[str, dict[str, dict[str, Any]]]:
     result: dict[str, dict[str, dict[str, Any]]] = {}
     for case in report["cases"]:
@@ -148,8 +167,11 @@ def evaluate_cases(
         required = reports[case_id][reference]
         if not required:
             continue
+        probe_candidates = reports[case_id].get("probeCandidates")
+        if not isinstance(probe_candidates, list) or not probe_candidates:
+            raise ValueError(f"{case_id}: selector evaluation requires probe candidates")
         ranked: list[dict[str, Any]] = []
-        for candidate in case["trainingCandidates"]:
+        for candidate in probe_candidates:
             base = [float(candidate["features"][name]) for name in BASE_FEATURES]
             features = base + document_features(interactions[case_id].get(candidate["path"]))
             priority = 2 if features[failure_index] > 0 else 1 if features[exact_path_index] > 0 else 0
@@ -293,6 +315,20 @@ def main(argv: list[str]) -> int:
     verify_frozen_pool(baseline, candidate)
     if candidate.get("materializer", {}).get("intakeSha256") != report.get("intakeSha256"):
         raise ValueError("candidate manifest/report provenance mismatch")
+    baseline_manifest_sha256 = hashlib.sha256(baseline_bytes).hexdigest()
+    candidate_report_sha256 = hashlib.sha256(report_bytes).hexdigest()
+    verify_baseline_evaluation_pool(
+        baseline_calibration,
+        baseline_manifest_sha256,
+        candidate_report_sha256,
+        "calibration baseline",
+    )
+    verify_baseline_evaluation_pool(
+        baseline_required,
+        baseline_manifest_sha256,
+        candidate_report_sha256,
+        "required-source baseline",
+    )
     interactions = interaction_maps(report)
     rows, training_bytes = read_rows(training_path, interactions)
     train = [row for row in rows if row["split"] == "train"]

@@ -1264,6 +1264,40 @@ describe("public evidence ranker training", () => {
     });
   });
 
+  it("evaluates learned selection over the full semantic probe", () => {
+    const python = pythonInvocation();
+    const script = [
+      "import importlib.util, json, sys",
+      "spec = importlib.util.spec_from_file_location('selector_eval', sys.argv[1])",
+      "selector_eval = importlib.util.module_from_spec(spec)",
+      "spec.loader.exec_module(selector_eval)",
+      "trainer = selector_eval.load_trainer()",
+      "base = {name: 0.0 for name in selector_eval.BASE_FEATURES}",
+      "noise = {'path': 'noise.ts', 'features': base}",
+      "required = {'path': 'required.ts', 'features': base}",
+      "case = {'id': 'case-a', 'language': 'typescript', 'scenario': 'source_localization', 'trainingCandidates': [noise]}",
+      "reports = {'case-a': {'requiredSourceExistingFiles': ['required.ts'], 'probeCandidates': [noise, required]}}",
+      "interactions = {'case-a': {'required.ts': {'fileSimilarity': 1.0}}}",
+      "coefficients = [0.0] * len(selector_eval.FEATURES)",
+      "coefficients[selector_eval.FEATURES.index('semanticFile')] = 1.0",
+      "result = selector_eval.evaluate_cases([case], reports, interactions, trainer, 0.0, coefficients, 'requiredSourceExistingFiles')",
+      "print(json.dumps(result))"
+    ].join("\n");
+    const result = spawnSync(python.command, [
+      ...python.prefix,
+      "-c", script,
+      path.resolve("scripts/evaluate-semantic-document-features.py")
+    ], { cwd: process.cwd(), encoding: "utf8" });
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      cases: 1,
+      requiredFiles: 1,
+      recallAt1: 1,
+      recallAt128: 1
+    });
+  });
+
   it("freezes train and calibration data before a detached holdout is opened", () => {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-ranker-detached-holdout-"));
     const input = path.join(temporary, "train-calibration.jsonl");
