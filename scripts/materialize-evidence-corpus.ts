@@ -219,6 +219,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       : undefined;
     snapshotTimer?.unref();
     const runtime = new KairnRuntime(checkout.root);
+    let repositoryIndexSnapshotEligible = false;
     try {
       const requiredSourcePartition = partitionRepositoryPaths(checkout.root, intakeCase.requiredSourceFiles);
       const officialPatchSourcePartition = partitionRepositoryPaths(checkout.root, intakeCase.officialPatchSourceFiles);
@@ -231,6 +232,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       });
       caseTiming.candidateInspection = roundMilliseconds(performance.now() - inspectionStarted);
       const embeddingReuse = inspectEmbeddingReuse(checkout.root, warmEmbeddingIdentities);
+      repositoryIndexSnapshotEligible = isSemanticMaterializationReady(inspection.semanticStatus);
       if (options.requireSemantic) {
         assertSemanticMaterializationReady(inspection.semanticStatus, intakeCase.id);
       }
@@ -399,7 +401,11 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       }
       caseTiming.embeddingCachePersist = roundMilliseconds(performance.now() - persistStarted);
       const indexPersistStarted = performance.now();
-      if (options.repositoryIndexSnapshotPath && !indexSnapshotRestored) {
+      if (
+        options.repositoryIndexSnapshotPath &&
+        !indexSnapshotRestored &&
+        repositoryIndexSnapshotEligible
+      ) {
         persistRepositoryIndexSnapshot(checkout.root, options.repositoryIndexSnapshotPath);
       }
       caseTiming.indexSnapshotPersist = roundMilliseconds(performance.now() - indexPersistStarted);
@@ -1475,7 +1481,7 @@ export function buildRepositoryIndexSnapshotCacheKey(input: {
   implementationSha256: string;
 }): string {
   return sha256([
-    "repository-index-snapshot.v2",
+    "repository-index-snapshot.v3",
     input.repositoryLineageId,
     input.repositoryRef,
     input.modelManifestSha256,
@@ -1922,12 +1928,7 @@ export function assertSemanticMaterializationReady(
   status: SemanticRetrieverStatus | undefined,
   caseId: string
 ): void {
-  if (
-    !status ||
-    status.requestedMode !== "semantic" ||
-    status.servedMode !== "semantic" ||
-    status.semanticIndexStatus !== "ready"
-  ) {
+  if (!isSemanticMaterializationReady(status)) {
     const detail = status
       ? [
           `requested=${status.requestedMode}`,
@@ -1938,6 +1939,17 @@ export function assertSemanticMaterializationReady(
       : "semantic status missing";
     throw new Error(`${caseId}: required semantic retrieval is not ready (${detail})`);
   }
+}
+
+export function isSemanticMaterializationReady(
+  status: SemanticRetrieverStatus | undefined
+): boolean {
+  return Boolean(
+    status &&
+    status.requestedMode === "semantic" &&
+    status.servedMode === "semantic" &&
+    status.semanticIndexStatus === "ready"
+  );
 }
 
 function partitionRepositoryPaths(rootPath: string, filePaths: string[]): {

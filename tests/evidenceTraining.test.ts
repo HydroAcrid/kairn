@@ -11,6 +11,7 @@ import {
   buildRepositoryIndexSnapshotCacheKey,
   buildSemanticLineageCacheKey,
   buildSemanticSnapshotCacheKey,
+  isSemanticMaterializationReady,
   materializeEvidenceCorpus,
   persistRepositoryIndexSnapshot,
   persistSnapshotEmbeddingCache,
@@ -148,24 +149,28 @@ describe("public evidence ranker training", () => {
   });
 
   it("fails benchmark materialization when semantic serving falls back", () => {
-    expect(() => assertSemanticMaterializationReady({
+    const fallbackStatus = {
       requestedMode: "semantic",
       servedMode: "fallback",
       semanticIndexStatus: "unavailable",
       semanticFallbackReason: "model unavailable",
       documentCount: 10,
       embeddingCount: 0
-    }, "case-a")).toThrow(
+    } as const;
+    expect(isSemanticMaterializationReady(fallbackStatus)).toBe(false);
+    expect(() => assertSemanticMaterializationReady(fallbackStatus, "case-a")).toThrow(
       "case-a: required semantic retrieval is not ready"
     );
-    expect(() => assertSemanticMaterializationReady({
+    const readyStatus = {
       requestedMode: "semantic",
       servedMode: "semantic",
       semanticModelId: "pinned-model",
       semanticIndexStatus: "ready",
       documentCount: 10,
       embeddingCount: 10
-    }, "case-a")).not.toThrow();
+    } as const;
+    expect(isSemanticMaterializationReady(readyStatus)).toBe(true);
+    expect(() => assertSemanticMaterializationReady(readyStatus, "case-a")).not.toThrow();
   });
 
   it("reuses only immutable semantic embeddings across fresh isolated checkout roots", () => {
