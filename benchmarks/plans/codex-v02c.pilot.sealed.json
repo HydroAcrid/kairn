@@ -18,7 +18,7 @@
   "kairn": {
     "candidateMode": "semantic",
     "semanticModelId": "jina-code-v2-q8",
-    "semanticModelManifestSha256": "7e2c45e28eb76adf07e6ad3cb3c521a0f0d1c0d7b559446f1bfc9cac04fa6a50",
+    "semanticModelManifestSha256": "d36c6ed084986e362004c43ddca67dabf5ef281617882eed9ee0e4b7dca999c0",
     "rankerMode": "calibrated",
     "rankerModelId": "kairn-semantic-rc-v185",
     "rankerArtifactChecksum": "642aeadca7e66ef6d44de7b1f1c9a76fe881ff023461589995fd6b52f89f5bad",

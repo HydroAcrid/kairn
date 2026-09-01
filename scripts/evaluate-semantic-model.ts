@@ -72,6 +72,8 @@ for (let offset = 0; offset < documents.length; offset += 8) {
       documentId: semanticDocument.id,
       documentHash: semanticDocument.hash,
       modelId: model.manifest.modelId,
+      runtimeBackend: model.runtimeBackend,
+      runtimeId: model.runtimeId,
       schemaVersion: manifest.documentSchemaVersion,
       vector: vectors[index]!
     }));

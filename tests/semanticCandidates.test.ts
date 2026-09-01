@@ -2568,18 +2568,26 @@ describe("model-based semantic candidates", () => {
     }
   });
 
-  it("stores compact embeddings incrementally by model and replaces them only after success", () => {
+  it("stores compact embeddings independently by model and exact inference runtime", () => {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-store-"));
     const store = new SqliteStore(path.join(temporary, "kairn.sqlite"));
     const rootPath = "/repo";
     const semanticDocument = document(rootPath, "doc", "src/source.ts", "file", "hash");
     const first = embedding(rootPath, semanticDocument, new Float32Array([1, 0]), "model-a");
     const second = embedding(rootPath, semanticDocument, new Float32Array([0, 1]), "model-b");
+    const native = {
+      ...first,
+      runtimeBackend: "node" as const,
+      runtimeId: "onnxruntime-node@1.14.0"
+    };
     try {
       store.upsertSemanticEmbeddings([first]);
       store.upsertSemanticEmbeddings([second]);
+      store.upsertSemanticEmbeddings([native]);
       expect(store.listSemanticEmbeddings(rootPath).map((item) => item.modelId))
-        .toEqual(["model-a", "model-b"]);
+        .toEqual(["model-a", "model-a", "model-b"]);
+      expect(store.listSemanticEmbeddings(rootPath).map((item) => item.runtimeId))
+        .toEqual(expect.arrayContaining(["onnxruntime-web@1.29.0", "onnxruntime-node@1.14.0"]));
       expect(store.listSemanticEmbeddings(rootPath)[0]?.vector).toBeInstanceOf(Int8Array);
 
       store.replaceIndex({
@@ -2684,6 +2692,8 @@ function embedding(
     documentId: semanticDocument.id,
     documentHash: semanticDocument.hash,
     modelId,
+    runtimeBackend: "wasm",
+    runtimeId: "onnxruntime-web@1.29.0",
     schemaVersion: "semantic-documents-v5",
     vector
   });

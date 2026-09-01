@@ -286,6 +286,8 @@ async function buildModelEmbeddings(input: {
       input.existing
         .filter((embedding) =>
           embedding.modelId === model.manifest.modelId &&
+          embedding.runtimeBackend === model.runtimeBackend &&
+          embedding.runtimeId === model.runtimeId &&
           embedding.schemaVersion === model.manifest.documentSchemaVersion &&
           embedding.dimensions === model.manifest.dimensions
         )
@@ -310,6 +312,8 @@ async function buildModelEmbeddings(input: {
           documentId: document.id,
           documentHash: document.hash,
           modelId: model.manifest.modelId,
+          runtimeBackend: model.runtimeBackend,
+          runtimeId: model.runtimeId,
           schemaVersion: model.manifest.documentSchemaVersion,
           vector: vectors[index]!
         }));

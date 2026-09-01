@@ -242,6 +242,9 @@ export type SemanticEmbeddingRecord = {
   documentId: string;
   documentHash: string;
   modelId: string;
+  runtimeBackend: "node" | "wasm";
+  /** Exact inference package identity; embeddings from different runtimes never mix. */
+  runtimeId: string;
   schemaVersion: SemanticDocumentSchemaVersion;
   dimensions: number;
   /** Symmetric int8 quantization keeps a repository-wide local index bounded. */
