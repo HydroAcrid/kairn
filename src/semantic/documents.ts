@@ -12,7 +12,7 @@ import { readTextFile } from "../retrieval/readSource.js";
 import { sha256 } from "../utils/hash.js";
 import { estimateTokens } from "../utils/tokens.js";
 
-export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v9" as const;
+export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v5" as const;
 // Jina v2 accepts 512 model tokens. Repository code averages roughly three to
 // four characters per token, so 1,500 characters preserves the behavioral
 // context the model needs without routinely crossing its tokenizer limit.
@@ -20,11 +20,10 @@ export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v9" as const
 // measurably regressed frozen candidate coverage by starving ordinary source
 // files of implementation evidence.
 const MAX_DOCUMENT_CHARS = 1_500;
-const MIN_SOURCE_BODY_CHARS = 112;
-const MAX_FILE_SYMBOLS = 12;
+const MAX_FILE_SYMBOLS = 4;
 const MAX_DIRECT_IMPORTS = 4;
 const MAX_DOCUMENTATION_SNIPPETS = 3;
-const MAX_SYMBOL_DOCUMENTS_PER_FILE = 2;
+const LARGE_REPOSITORY_SYMBOL_FRACTION = 0.25;
 
 export function buildSemanticDocuments(input: {
   rootPath: string;
@@ -52,8 +51,7 @@ export function buildSemanticDocuments(input: {
         return document
           ? {
               document,
-              spanLines: Math.max(1, symbol.endLine - symbol.startLine + 1),
-              outer: isOuterBehavioralSymbol(symbol, symbols)
+              spanLines: Math.max(1, symbol.endLine - symbol.startLine + 1)
             }
           : undefined;
       })
@@ -62,19 +60,16 @@ export function buildSemanticDocuments(input: {
   }
 
   const selected = [...fileDocuments];
-  // Source and test file-level coverage is mandatory. Tests often contain the
-  // behavioral vocabulary that links a natural-language failure to its
-  // production implementation through precise parser-observed call/test
-  // edges. Use the remaining bounded budget to represent one behavioral body
-  // from as many files as possible
-  // before spending a second slot anywhere. The previous symbol-count-
-  // weighted policy repeatedly enriched complex files while leaving ordinary
-  // implementation files with only a very small file-level synopsis.
-  const remainingDocumentBudget = Math.max(0, input.maxDocuments - selected.length);
-  const symbolBudget = Math.min(
-    remainingDocumentBudget,
-    selected.length * MAX_SYMBOL_DOCUMENTS_PER_FILE
-  );
+  // File-level coverage is mandatory. When a repository already exceeds the
+  // nominal document budget, retain a bounded additional allocation for real
+  // behavioral bodies; large implementations otherwise collapse to a short
+  // synopsis and lose the source vocabulary needed by the embedding model.
+  const symbolBudget = input.maxDocuments > selected.length
+    ? input.maxDocuments - selected.length
+    : Math.min(
+        input.maxDocuments,
+        Math.ceil(selected.length * LARGE_REPOSITORY_SYMBOL_FRACTION)
+      );
   if (symbolBudget > 0) {
     selected.push(...allocateSymbolDocuments(symbolQueues, symbolBudget));
   }
@@ -96,25 +91,51 @@ function buildFileDocument(
   const declaredSymbols = evenlySampleIncludingEndpoints(
     behavioralSymbols,
     Math.min(MAX_FILE_SYMBOLS, behavioralSymbols.length)
-  ).map((symbol) => symbol.name);
+  ).map((symbol) => `${symbol.kind} ${boundedField(symbol.signature || symbol.name, 56)}`);
+  const callableSurface = callableSurfaceNames(behavioralSymbols);
   const documentation = extractLeadingDocumentation(content, behavioralSymbols);
+  const fileImportLimit = documentation.length > 0 ? 3 : MAX_DIRECT_IMPORTS;
   const directImports = parsed?.imports.length
-    ? evenlySampleIncludingEndpoints(parsed.imports, Math.min(MAX_DIRECT_IMPORTS, parsed.imports.length))
+    ? evenlySampleIncludingEndpoints(parsed.imports, Math.min(fileImportLimit, parsed.imports.length))
       .map((item) => boundedField(item, 48))
     : [];
-  const prefix = [
-    `file: ${boundedField(file.path, 96)}`,
-    `language: ${file.language}`,
-    `role: ${file.kind}`,
-    `module: ${boundedField(path.posix.dirname(file.path), 56)}`,
-    boundedWholeItemList("declared symbols", declaredSymbols, 140),
-    ...(documentation.length > 0
-      ? [boundedList("documentation", documentation, 120)]
-      : []),
-    boundedWholeItemList("direct imports", directImports, 80),
-    "",
-    "representative source:"
-  ].join("\n");
+  const prefix = documentation.length > 0
+    ? [
+        `file: ${boundedField(file.path, callableSurface.length > 0 ? 96 : 112)}`,
+        `language: ${file.language}`,
+        `role: ${file.kind}`,
+        `module: ${boundedField(path.posix.dirname(file.path), callableSurface.length > 0 ? 48 : 56)}`,
+        boundedList("declared symbols", declaredSymbols, callableSurface.length > 0 ? 96 : 112),
+        boundedList("direct imports", directImports, callableSurface.length > 0 ? 64 : 80),
+        ...(callableSurface.length > 0
+          ? [boundedList("callable surface", callableSurface, 112)]
+          : []),
+        boundedList("documentation", documentation, callableSurface.length > 0 ? 168 : 224),
+        "",
+        "representative source:"
+      ].join("\n")
+    : callableSurface.length > 0
+      ? [
+          `file: ${boundedField(file.path, 112)}`,
+          `language: ${file.language}`,
+          `role: ${file.kind}`,
+          `module: ${boundedField(path.posix.dirname(file.path), 56)}`,
+          boundedList("declared symbols", declaredSymbols, 112),
+          boundedList("direct imports", directImports, 80),
+          boundedList("callable surface", callableSurface, 180),
+          "",
+          "representative source:"
+        ].join("\n")
+      : [
+          `file: ${boundedField(file.path, 160)}`,
+          `language: ${file.language}`,
+          `role: ${file.kind}`,
+          `module: ${boundedField(path.posix.dirname(file.path), 80)}`,
+          boundedList("declared symbols", declaredSymbols, 140),
+          boundedList("direct imports", directImports, 140),
+          "",
+          "representative source:"
+        ].join("\n");
   const text = composeDocument(prefix, content);
   return semanticDocument({
     rootPath: file.rootPath,
@@ -123,6 +144,16 @@ function buildFileDocument(
     identity: `${file.path}\0file`,
     text
   });
+}
+
+function callableSurfaceNames(symbols: SymbolRecord[]): string[] {
+  const unique = [...new Set(
+    symbols
+      .filter((symbol) => symbol.kind === "function" || symbol.kind === "component")
+      .map((symbol) => symbol.name)
+  )];
+  if (unique.length <= MAX_FILE_SYMBOLS) return [];
+  return evenlySampleIncludingEndpoints(unique, Math.min(10, unique.length));
 }
 
 function buildSymbolDocument(
@@ -323,20 +354,8 @@ function truncateDocument(text: string): string {
 
 function composeDocument(prefix: string, body: string): string {
   const separator = "\n";
-  const prefixBudget = Math.max(
-    1,
-    MAX_DOCUMENT_CHARS - MIN_SOURCE_BODY_CHARS - separator.length
-  );
-  const boundedPrefix = prefix.length <= prefixBudget
-    ? prefix
-    : prefix.slice(0, prefixBudget).trimEnd();
-  const bodyBudget = Math.max(
-    MIN_SOURCE_BODY_CHARS,
-    MAX_DOCUMENT_CHARS - boundedPrefix.length - separator.length
-  );
-  return truncateDocument(
-    `${boundedPrefix}${separator}${representativeSource(body, bodyBudget)}`
-  );
+  const bodyBudget = Math.max(1, MAX_DOCUMENT_CHARS - prefix.length - separator.length);
+  return truncateDocument(`${prefix}${separator}${representativeSource(body, bodyBudget)}`);
 }
 
 function boundedList(label: string, values: string[], maxChars: number): string {
@@ -391,7 +410,6 @@ function uniqueDocuments(documents: SemanticDocumentRecord[]): SemanticDocumentR
 type SemanticSymbolDocumentCandidate = {
   document: SemanticDocumentRecord;
   spanLines: number;
-  outer: boolean;
 };
 
 function uniqueSemanticContent(
@@ -417,32 +435,35 @@ function allocateSymbolDocuments(
     .filter(([, documents]) => documents.length > 0)
     .map(([filePath, documents]) => ({
       filePath,
-      documents
+      documents,
+      weight: Math.sqrt(documents.length),
+      allocation: 0
     }))
     .sort((left, right) => left.filePath.localeCompare(right.filePath));
-  let remaining = Math.min(
-    Math.max(0, Math.floor(budget)),
-    entries.reduce(
-      (sum, entry) => sum + Math.min(MAX_SYMBOL_DOCUMENTS_PER_FILE, entry.documents.length),
-      0
-    )
-  );
-  const allocations = new Map(entries.map((entry) => [entry.filePath, 0]));
+  const capacity = entries.reduce((sum, entry) => sum + entry.documents.length, 0);
+  let remaining = Math.min(Math.max(0, Math.floor(budget)), capacity);
 
-  // Maximize repository coverage first. When the configured global cap cannot
-  // fit every file, sample the stable path-ordered inventory rather than
-  // favoring filenames or repositories with more declarations.
-  for (let depth = 1; depth <= MAX_SYMBOL_DOCUMENTS_PER_FILE && remaining > 0; depth += 1) {
-    const eligible = entries.filter((entry) => entry.documents.length >= depth);
-    const selected = evenlySampleIncludingEndpoints(eligible, Math.min(remaining, eligible.length));
-    for (const entry of selected) {
-      allocations.set(entry.filePath, (allocations.get(entry.filePath) ?? 0) + 1);
+  while (remaining > 0) {
+    let selected: (typeof entries)[number] | undefined;
+    let selectedPriority = Number.NEGATIVE_INFINITY;
+    for (const entry of entries) {
+      if (entry.allocation >= entry.documents.length) continue;
+      const priority = entry.weight / (entry.allocation + 1);
+      if (
+        priority > selectedPriority ||
+        (priority === selectedPriority && entry.filePath.localeCompare(selected?.filePath ?? "") < 0)
+      ) {
+        selected = entry;
+        selectedPriority = priority;
+      }
     }
-    remaining -= selected.length;
+    if (!selected) break;
+    selected.allocation += 1;
+    remaining -= 1;
   }
 
   return entries.flatMap((entry) =>
-    selectBehavioralSymbolDocuments(entry.documents, allocations.get(entry.filePath) ?? 0)
+    selectBehavioralSymbolDocuments(entry.documents, entry.allocation)
       .map((candidate) => candidate.document)
   );
 }
@@ -453,24 +474,21 @@ function selectBehavioralSymbolDocuments(
 ): SemanticSymbolDocumentCandidate[] {
   if (count <= 0) return [];
   if (count >= candidates.length) return [...candidates];
-  const orderedOuter = candidates
-    .filter((candidate) => candidate.outer)
+  const largestCount = Math.max(1, Math.ceil(count / 2));
+  const largest = [...candidates]
     .sort((left, right) =>
       right.spanLines - left.spanLines ||
       (left.document.symbol ?? "").localeCompare(right.document.symbol ?? "") ||
       left.document.id.localeCompare(right.document.id)
-    );
-  const selected = orderedOuter.slice(0, count);
-  if (selected.length >= count) return selected;
-  const selectedIds = new Set(selected.map((candidate) => candidate.document.id));
-  const nested = candidates
-    .filter((candidate) => !candidate.outer && !selectedIds.has(candidate.document.id))
-    .sort((left, right) =>
-      right.spanLines - left.spanLines ||
-      (left.document.symbol ?? "").localeCompare(right.document.symbol ?? "") ||
-      left.document.id.localeCompare(right.document.id)
-    );
-  return [...selected, ...nested.slice(0, count - selected.length)];
+    )
+    .slice(0, largestCount);
+  const selectedIds = new Set(largest.map((candidate) => candidate.document.id));
+  const remaining = candidates.filter((candidate) => !selectedIds.has(candidate.document.id));
+  const sourceCoverage = evenlySampleIncludingEndpoints(
+    remaining,
+    Math.min(count - largest.length, remaining.length)
+  );
+  return [...largest, ...sourceCoverage];
 }
 
 function evenlySample<T>(values: T[], count: number): T[] {

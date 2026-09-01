@@ -51,7 +51,7 @@ const JINA_CODE: SemanticModelManifest = {
   normalize: true,
   queryPrefix: "",
   documentPrefix: "",
-  documentSchemaVersion: "semantic-documents-v9",
+  documentSchemaVersion: "semantic-documents-v5",
   runtime: {
     library: "kairn-onnx-wasm-v1",
     modelFilePath: "onnx/model.onnx"
@@ -110,7 +110,7 @@ const BGE_SMALL: SemanticModelManifest = {
   normalize: true,
   queryPrefix: "Represent this sentence for searching relevant passages: ",
   documentPrefix: "",
-  documentSchemaVersion: "semantic-documents-v9",
+  documentSchemaVersion: "semantic-documents-v5",
   runtime: {
     library: "kairn-onnx-wasm-v1",
     modelFilePath: "onnx/model.onnx"
@@ -167,7 +167,7 @@ const CODERANK_CODE: SemanticModelManifest = {
   normalize: true,
   queryPrefix: "Represent this query for searching relevant code: ",
   documentPrefix: "",
-  documentSchemaVersion: "semantic-documents-v9",
+  documentSchemaVersion: "semantic-documents-v5",
   runtime: {
     library: "kairn-onnx-wasm-v1",
     modelFilePath: "onnx/model.onnx",

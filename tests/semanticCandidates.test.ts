@@ -2025,7 +2025,7 @@ describe("model-based semantic candidates", () => {
     }
   });
 
-  it("gives broad behavioral-symbol coverage before enriching any file twice", () => {
+  it("allocates bounded behavioral bodies toward implementation-rich files", () => {
     const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-symbol-budget-"));
     try {
       const largePath = "src/large-parser.ts";
@@ -2084,12 +2084,8 @@ describe("model-based semantic candidates", () => {
       });
       const symbolDocuments = documents.filter((document) => document.kind === "symbol");
       expect(symbolDocuments).toHaveLength(12);
-      expect(new Set(symbolDocuments.map((document) => document.filePath))).toEqual(
-        new Set(files.map((record) => record.path))
-      );
-      expect(Math.max(...files.map((record) =>
-        symbolDocuments.filter((document) => document.filePath === record.path).length
-      ))).toBe(2);
+      expect(symbolDocuments.filter((document) => document.filePath === largePath)).toHaveLength(6);
+      expect(new Set(symbolDocuments.map((document) => document.filePath)).size).toBe(7);
       expect(documents).toHaveLength(files.length + 12);
     } finally {
       fs.rmSync(rootPath, { recursive: true, force: true });
@@ -2188,7 +2184,7 @@ describe("model-based semantic candidates", () => {
       expect(fileDocument.text).toContain("operation0");
       expect(fileDocument.text).toContain("operation19");
       expect(fileDocument.text).toContain("declared symbols:");
-      expect(fileDocument.text).toContain("operation10");
+      expect(fileDocument.text).toContain("operation11");
       expect(fileDocument.text).toContain("package-0");
       expect(fileDocument.text).toContain("package-19");
       expect(fileDocument.text).toContain("region_0_sentinel");
@@ -2308,7 +2304,7 @@ describe("model-based semantic candidates", () => {
       expect(fileDocument.text).toContain("applyTransformation");
       expect(fileDocument.text).not.toContain("declared symbols: ImportDeclaration");
       expect(documents.filter((document) => document.kind === "symbol").map((document) => document.symbol))
-        .not.toContain("ImportDeclaration");
+        .toEqual(expect.arrayContaining(["transformProgram", "applyTransformation"]));
     } finally {
       fs.rmSync(rootPath, { recursive: true, force: true });
     }
@@ -2373,7 +2369,7 @@ describe("model-based semantic candidates", () => {
     }
   });
 
-  it("keeps complete production file coverage without exceeding the nominal budget with symbols", () => {
+  it("keeps complete file coverage with a bounded large-repository symbol allowance", () => {
     const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-large-repo-budget-"));
     try {
       const files = Array.from({ length: 20 }, (_, index) => {
@@ -2420,8 +2416,8 @@ describe("model-based semantic candidates", () => {
         maxDocuments: 10
       });
       expect(documents.filter((document) => document.kind === "file")).toHaveLength(20);
-      expect(documents.filter((document) => document.kind === "symbol")).toHaveLength(0);
-      expect(documents).toHaveLength(20);
+      expect(documents.filter((document) => document.kind === "symbol")).toHaveLength(5);
+      expect(documents).toHaveLength(25);
     } finally {
       fs.rmSync(rootPath, { recursive: true, force: true });
     }
