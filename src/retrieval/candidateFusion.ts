@@ -342,6 +342,17 @@ export function buildModelCandidateUnion(input: {
     { paths: graphImporterPaths, weight: 1 }
   ], DEFAULT_ENRICHED_CANDIDATE_LIMIT)
     .filter((filePath) => filesByPath.has(filePath));
+  // Interleave the precision core with the corroborated tail before applying
+  // the global 128-file bound. Appending a complete 64-file core first makes
+  // the tail depend on accidental overlap with the initial 64: tiny numeric
+  // differences between supported ONNX runtimes can then create or remove the
+  // only available tail slot. A bounded weighted merge preserves the stronger
+  // core while keeping the independent importer/consensus lane observable.
+  const graphEnrichmentPaths = weightedInterleavePaths([
+    { paths: graphCorePaths, weight: 2 },
+    { paths: graphTailPaths, weight: 1 }
+  ], DEFAULT_ENRICHED_CANDIDATE_LIMIT)
+    .filter((filePath) => filesByPath.has(filePath));
   // Graph relations enrich the bounded union; they do not get to evict
   // independently retrieved evidence from the initial 64-file lane. Preserve
   // that serving contract, then fill the remaining bounded capacity with the
@@ -354,6 +365,7 @@ export function buildModelCandidateUnion(input: {
   // enrichment capacity instead of assigning brittle independent quotas.
   const enrichedPaths = uniquePaths([
     ...initialPaths,
+    ...graphEnrichmentPaths,
     ...graphCorePaths,
     ...graphTailPaths,
     ...graphConsensusPaths,
