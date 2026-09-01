@@ -39,9 +39,7 @@ const MAX_FENCED_QUERY_CANDIDATES = 12;
 const SEMANTIC_QUERY_WINDOW_CHARS = 560;
 const SEMANTIC_QUERY_WINDOW_OVERLAP_CHARS = 80;
 const SEMANTIC_DIAGNOSTIC_RANK_LIMIT = 512;
-const SEMANTIC_SYNOPSIS_HEADLINE_CHARS = 320;
-const SEMANTIC_SYNOPSIS_NARRATIVE_CHARS = 620;
-const SEMANTIC_EVIDENCE_ENDPOINT_CHARS = 720;
+const SEMANTIC_SUPPORTING_VIEW_CHARS = 900;
 const MAX_SEMANTIC_CONSENSUS_RESERVE = 16;
 
 export async function searchSemanticCandidates(input: {
@@ -216,10 +214,10 @@ export function buildSemanticQueries(query: string): string[] {
  * Serving uses at most three compact model queries so a broad issue template
  * cannot gain extra retrieval votes merely because it contains more sections.
  * The independent structural headline preserves concise task intent while a
- * bounded synopsis lets the model relate behavior described across multiple
- * issue sections. A separate fenced-evidence view preserves precise
- * diagnostics and reproductions. The embedding model—not task words or
- * filenames—decides relevance.
+ * bounded supporting view lets the model relate behavior described across
+ * issue sections and precise fenced diagnostics without paying for a third
+ * independent model pass. The embedding model—not task words or filenames—
+ * decides relevance.
  *
  * The broader candidate/view builder remains available for offline diagnostics
  * and model-selection analysis.
@@ -227,32 +225,44 @@ export function buildSemanticQueries(query: string): string[] {
 export function buildSemanticServingQueries(query: string): string[] {
   const candidates = buildSemanticQueryCandidates(query);
   const headline = candidates.find((candidate) => candidate.kind === "headline");
-  const narratives = candidates
-    .filter((candidate) => candidate.kind === "narrative")
-    .slice(-2);
-  const fences = candidates.filter((candidate) => candidate.kind === "fence");
-  const parts = [...new Set(
-    [
-      headline?.text.slice(0, SEMANTIC_SYNOPSIS_HEADLINE_CHARS).trim(),
-      ...narratives.map((narrative) =>
-        narrative.text.slice(0, SEMANTIC_SYNOPSIS_NARRATIVE_CHARS).trim()
-      )
-    ].filter((value): value is string => Boolean(value))
-  )];
-  const synopsis = normalizeSemanticQuery(parts.join("\n\n")).slice(0, MAX_QUERY_CHARS).trim();
-  const evidenceParts = evenlySampleIncludingEndpoints(
-    fences,
-    Math.min(2, fences.length)
-  ).map((candidate) =>
-    candidate.text.slice(0, SEMANTIC_EVIDENCE_ENDPOINT_CHARS).trim()
+  const narrativeCandidates = candidates
+    .filter((candidate) => candidate.kind === "narrative");
+  const narratives = evenlySampleIncludingEndpoints(
+    narrativeCandidates,
+    Math.min(2, narrativeCandidates.length)
   );
-  const evidenceSynopsis = normalizeSemanticQuery(
-    [...new Set(evidenceParts)].join("\n\n")
-  ).slice(0, MAX_QUERY_CHARS).trim();
+  const fences = candidates.filter((candidate) => candidate.kind === "fence");
+  const supportingView = boundedSemanticView(
+    [
+      ...narratives.map((candidate) => candidate.text),
+      ...evenlySampleIncludingEndpoints(fences, Math.min(2, fences.length))
+        .map((candidate) => candidate.text)
+    ],
+    SEMANTIC_SUPPORTING_VIEW_CHARS
+  );
   return [...new Set(
-    [headline?.text, synopsis, evidenceSynopsis]
+    [headline?.text, supportingView]
       .filter((value): value is string => Boolean(value))
   )].slice(0, 3);
+}
+
+function boundedSemanticView(parts: string[], limit: number): string {
+  const normalizedParts = [...new Set(parts
+    .map((part) => normalizeSemanticQuery(part).trim())
+    .filter(Boolean))];
+  if (normalizedParts.length === 0) return "";
+  const separator = "\n\n";
+  const contentBudget = Math.max(
+    normalizedParts.length,
+    limit - separator.length * (normalizedParts.length - 1)
+  );
+  const baseShare = Math.floor(contentBudget / normalizedParts.length);
+  let remainder = contentBudget % normalizedParts.length;
+  return normalizedParts.map((part) => {
+    const share = baseShare + (remainder > 0 ? 1 : 0);
+    remainder = Math.max(0, remainder - 1);
+    return part.slice(0, share).trim();
+  }).filter(Boolean).join(separator).slice(0, limit).trim();
 }
 
 export function selectSemanticQueryViewIndexes(

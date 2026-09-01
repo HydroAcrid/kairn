@@ -1653,11 +1653,11 @@ describe("model-based semantic candidates", () => {
       "```"
     ].join("\n"));
 
-    expect(queries).toHaveLength(3);
+    expect(queries).toHaveLength(2);
     expect(queries[1]).toContain("observed failure");
-    expect(queries[2]).toContain("String value");
-    expect(queries[2]).toContain("UnsupportedOperationException");
-    expect(queries[2]).toContain("TextBlockLiteralExpr");
+    expect(queries[1]).toContain("String value");
+    expect(queries[1]).toContain("UnsupportedOperationException");
+    expect(queries[1]).toContain("TextBlockLiteralExpr");
     expect(queries.every((query) => query.length <= 1_600)).toBe(true);
   });
 
