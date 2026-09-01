@@ -231,7 +231,7 @@ function stableEligibleFiles(files: FileRecord[]): FileRecord[] {
 
 function groupSymbols(symbols: SymbolRecord[]): Map<string, SymbolRecord[]> {
   const grouped = new Map<string, SymbolRecord[]>();
-  for (const symbol of behaviorSymbols(symbols).sort((left, right) =>
+  for (const symbol of semanticBehaviorSymbols(symbols).sort((left, right) =>
     left.filePath.localeCompare(right.filePath) ||
     left.startLine - right.startLine ||
     left.name.localeCompare(right.name)
@@ -242,28 +242,10 @@ function groupSymbols(symbols: SymbolRecord[]): Map<string, SymbolRecord[]> {
 }
 
 function semanticBehaviorSymbols(symbols: SymbolRecord[]): SymbolRecord[] {
-  const behavioral = behaviorSymbols(symbols);
-  return behavioral.filter((symbol) => isOuterBehavioralSymbol(symbol, behavioral));
-}
-
-function behaviorSymbols(symbols: SymbolRecord[]): SymbolRecord[] {
   return symbols.filter((symbol) =>
     symbol.exported ||
     ["function", "class", "interface", "type", "component", "default"].includes(symbol.kind)
   );
-}
-
-function isOuterBehavioralSymbol(symbol: SymbolRecord, symbols: SymbolRecord[]): boolean {
-  return symbol.exported || !symbols.some((parent) =>
-      parent !== symbol &&
-      parent.filePath === symbol.filePath &&
-      parent.startLine <= symbol.startLine &&
-      parent.endLine >= symbol.endLine &&
-      (
-        parent.startLine < symbol.startLine ||
-        parent.endLine > symbol.endLine
-      )
-    );
 }
 
 function representativeSource(content: string, maxChars: number): string {
@@ -368,19 +350,6 @@ function boundedList(label: string, values: string[], maxChars: number): string 
     Math.floor((available - separator.length * (values.length - 1)) / values.length)
   );
   return `${prefix}${values.map((value) => boundedField(value, perItem)).join(separator)}`;
-}
-
-function boundedWholeItemList(label: string, values: string[], maxChars: number): string {
-  if (values.length === 0) return `${label}: none`;
-  const prefix = `${label}: `;
-  const available = Math.max(1, maxChars - prefix.length);
-  for (let count = values.length; count >= 1; count -= 1) {
-    const selected = evenlySampleIncludingEndpoints(values, count)
-      .map((value) => boundedField(value, 48));
-    const rendered = selected.join("; ");
-    if (rendered.length <= available) return `${prefix}${rendered}`;
-  }
-  return `${prefix}${boundedField(values[0]!, available)}`;
 }
 
 function boundedField(value: string, maxChars: number): string {

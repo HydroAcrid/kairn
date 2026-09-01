@@ -498,7 +498,7 @@ describe("model-based semantic candidates", () => {
     expect(result.graphEvidenceByPath.get(importer.path)?.seedStrength).toBeGreaterThan(0.3);
   });
 
-  it("lets a primary model seed recover a semantically corroborated direct importer", () => {
+  it("keeps primary-seed reverse imports out of the probe-only importer lane", () => {
     const rootPath = "/repo";
     const dependency = file(rootPath, "src/runtime/dependency.ts");
     const importer = file(rootPath, "src/runtime/adapter.ts");
@@ -538,7 +538,7 @@ describe("model-based semantic candidates", () => {
     });
 
     expect(result.graphPaths.indexOf(importer.path)).toBeGreaterThanOrEqual(64);
-    expect(result.graphImporterPaths).toContain(importer.path);
+    expect(result.graphImporterPaths).not.toContain(importer.path);
     expect(result.enrichedPaths).toContain(importer.path);
   });
 
@@ -618,7 +618,7 @@ describe("model-based semantic candidates", () => {
       )
     });
 
-    expect(result.initialPaths).toContain(lexicalFiles[1]!.path);
+    expect(result.initialPaths).toContain(lexicalFiles[0]!.path);
     expect(result.initialPaths).toContain(semanticFiles[47]!.path);
     expect(result.initialPaths).toHaveLength(64);
   });
@@ -823,7 +823,7 @@ describe("model-based semantic candidates", () => {
     ]));
   });
 
-  it("preserves raw model rank for path-classified test probes without delivering the test", () => {
+  it("recognizes path-classified test probes without giving them production rank", () => {
     const rootPath = "/repo";
     // Some JavaScript suites use test/foo.js, which is objectively a test even
     // when the coarse scanner kind remains source.
@@ -851,11 +851,11 @@ describe("model-based semantic candidates", () => {
 
     expect(result.initialPaths).not.toContain(testProbe.path);
     expect(result.graphSeedPaths).toContain(testProbe.path);
-    expect(result.graphSeedRanks.get(testProbe.path)).toBe(1);
+    expect(result.graphSeedRanks.get(testProbe.path)).toBeGreaterThan(64);
     expect(result.enrichedPaths).toContain(implementation.path);
   });
 
-  it("orders direct callees ahead of reverse callers and shared-call inferences", () => {
+  it("lets model evidence order equally precise parser-observed call relationships", () => {
     const rootPath = "/repo";
     const seed = file(rootPath, "src/workflow.ts");
     const directCallee = file(rootPath, "src/direct-state.ts");
@@ -878,9 +878,11 @@ describe("model-based semantic candidates", () => {
       }]
     });
 
-    expect(ranked[0]).toBe(directCallee.path);
-    expect(ranked.indexOf(directCallee.path)).toBeLessThan(ranked.indexOf(reverseCaller.path));
-    expect(ranked.indexOf(directCallee.path)).toBeLessThan(ranked.indexOf(sharedTarget.path));
+    expect(ranked).toEqual([
+      sharedTarget.path,
+      reverseCaller.path,
+      directCallee.path
+    ]);
   });
 
   it("uses model-backed production probes only through precise parser relationships", () => {

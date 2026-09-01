@@ -72,7 +72,7 @@ const MODEL_GRAPH_SEED_SEMANTIC_RESERVE = Math.floor(
 const MODEL_INITIAL_SEMANTIC_RESERVE = 48;
 const MODEL_INITIAL_BM25_RESERVE = 8;
 const MODEL_INITIAL_SYMBOL_RESERVE = 4;
-const MODEL_INITIAL_GRAPH_RESERVE = 4;
+const MODEL_INITIAL_GRAPH_RESERVE = 16;
 const MAX_TEST_GRAPH_PROBE_PATHS = 192;
 const GRAPH_ENRICHMENT_CAPACITY =
   DEFAULT_ENRICHED_CANDIDATE_LIMIT - DEFAULT_INITIAL_CANDIDATE_LIMIT;
@@ -161,13 +161,6 @@ export function buildModelCandidateUnion(input: {
     : prioritizeRetrievalPathsForIntent(uniquePaths(
       input.semanticEvidencePaths ?? semanticPaths
       ).filter(eligibleNonHard), signals.intent, filesByPath);
-  // Role policy keeps tests out of source delivery, but graph-only probes must
-  // retain their raw model ordering. Otherwise a behaviorally exact test can
-  // be shifted behind every production file before a precise parser-observed
-  // test/call edge gets a chance to recover the implementation.
-  const rawGraphSemanticEvidencePaths = uniquePaths(
-    input.semanticEvidencePaths ?? semanticEvidencePaths
-  ).filter((filePath) => eligibleNonHard(filePath) && filesByPath.has(filePath));
   const bm25Paths = [...input.bm25Results]
     .filter((result) => result.bm25Score > 0)
     .sort((left, right) => right.bm25Score - left.bm25Score || left.path.localeCompare(right.path))
@@ -216,7 +209,7 @@ export function buildModelCandidateUnion(input: {
     .slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
   const graphProbePaths = signals.intent === "source"
     ? uniquePaths([
-        ...rawGraphSemanticEvidencePaths
+        ...semanticEvidencePaths
           .filter((filePath) =>
             !preliminaryGraphSeedPaths.includes(filePath) &&
             isTestEvidenceFile(filesByPath.get(filePath)!)
@@ -239,9 +232,6 @@ export function buildModelCandidateUnion(input: {
   const semanticEvidenceRanks = new Map(
     semanticEvidencePaths.map((filePath, index) => [filePath, index + 1])
   );
-  const rawSemanticEvidenceRanks = new Map(
-    rawGraphSemanticEvidencePaths.map((filePath, index) => [filePath, index + 1])
-  );
   // Probe selection is role-balanced so semantically relevant tests retain a
   // chance to rescue their production companions. That coverage policy must
   // not overwrite the model's relevance ordering, however. Keep primary seed
@@ -251,9 +241,7 @@ export function buildModelCandidateUnion(input: {
     graphSeedPaths.map((filePath, index) => [filePath, index + 1])
   );
   for (const filePath of graphProbePaths) {
-    const semanticEvidenceRank = isTestEvidenceFile(filesByPath.get(filePath)!)
-      ? rawSemanticEvidenceRanks.get(filePath)
-      : semanticEvidenceRanks.get(filePath);
+    const semanticEvidenceRank = semanticEvidenceRanks.get(filePath);
     if (semanticEvidenceRank !== undefined) {
       graphSeedRanks.set(filePath, semanticEvidenceRank);
     }
@@ -608,6 +596,7 @@ export function rankEvidenceBackedGraphCandidates(input: {
     if (!seedRank || !neighbor || seedPath === neighborPath || neighbor.indexTier === "tier0") return;
     const independentEvidence = evidenceRanks.get(neighborPath);
     const isModelCorroboratedReverseImporter = (
+      probeSeedSet.has(seedPath) &&
       edge.type === "imports" &&
       direction === "reverse" &&
       (independentEvidence?.has("semantic") ?? false)
@@ -629,7 +618,7 @@ export function rankEvidenceBackedGraphCandidates(input: {
     ) {
       return;
     }
-    const precision = edgePriority(edge.type, direction);
+    const precision = edgePriority(edge.type);
     if (precision === 0) return;
     if (
       (precision === 1 || edge.type === "shared_call_target") &&
@@ -950,20 +939,13 @@ export function expandDirectGraphCandidates(input: {
   return selected;
 }
 
-function edgePriority(
-  type: GraphEdgeRecord["type"],
-  direction?: "forward" | "reverse"
-): number {
+function edgePriority(type: GraphEdgeRecord["type"]): number {
   if (
     type === "test_for" ||
-    type === "tested_by"
+    type === "tested_by" ||
+    type === "shared_call_target" ||
+    type === "call"
   ) return 5;
-  // Parser call edges point from caller to implementation. Preserve the
-  // directly called implementation as the strongest relationship; reverse
-  // callers and inferred shared targets remain useful but cannot crowd the
-  // concrete callee out of the bounded graph lane.
-  if (type === "call") return direction === "reverse" ? 3 : 5;
-  if (type === "shared_call_target") return 3;
   if (type === "module_installation" || type === "type_reference") return 4;
   if (
     type === "definition" ||
