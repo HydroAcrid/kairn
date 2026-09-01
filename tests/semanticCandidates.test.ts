@@ -723,6 +723,7 @@ describe("model-based semantic candidates", () => {
 
     expect(result.initialPaths).not.toContain(testProbe.path);
     expect(result.graphSeedPaths).toContain(testProbe.path);
+    expect(result.graphSourceTestPaths).toContain(declaration.path);
     expect(result.enrichedPaths).toEqual(expect.arrayContaining([
       declaration.path,
       planCaller.path,

@@ -3950,6 +3950,7 @@ export class KairnRuntime {
           semanticInteractions: fused.semanticInteractions,
           bm25: modelBm25Results.map((result) => result.path),
           graph: fused.graphPaths,
+          graphSourceTest: fused.graphSourceTestPaths,
           graphImporter: fused.graphImporterPaths,
           graphConsensus: fused.graphConsensusPaths,
           graphEvidence: describeGraphCandidateEvidence({

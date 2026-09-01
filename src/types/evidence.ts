@@ -171,6 +171,7 @@ export type EvidenceCandidateInspection = {
     }>;
     bm25: string[];
     graph: string[];
+    graphSourceTest?: string[];
     graphImporter?: string[];
     graphConsensus: string[];
     graphEvidence: Array<{

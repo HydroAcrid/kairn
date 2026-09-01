@@ -41,6 +41,7 @@ export type ModelCandidateUnion = {
   probeCandidateResults: HybridScoredResult[];
   semanticStatus: SemanticRetrieverStatus;
   graphPaths: string[];
+  graphSourceTestPaths: string[];
   graphImporterPaths: string[];
   graphConsensusPaths: string[];
   graphSeedPaths: string[];
@@ -297,6 +298,16 @@ export function buildModelCandidateUnion(input: {
     signals.intent,
     filesByPath
   );
+  // Exact parser-observed source/test relationships are an independent
+  // candidate fact. Preserve a bounded lane in the offline selector probe so
+  // the learned model can judge it; burying these paths behind hundreds of
+  // semantic hits makes the relationship impossible to learn from locally.
+  const graphSourceTestPaths = uniquePaths([
+    ...graphConsensusPaths,
+    ...graphPaths
+  ])
+    .filter((filePath) => graphEvidenceByPath.get(filePath)?.sourceTestPair === true)
+    .slice(0, DEFAULT_ENRICHED_CANDIDATE_LIMIT);
   // Candidate recall needs independent lanes to survive before the calibrated
   // ranker sees the first 64 files. A model-only reserve can crowd out exact
   // symbols and parser-proven direct neighbors, while an unconstrained graph
@@ -392,11 +403,12 @@ export function buildModelCandidateUnion(input: {
   );
   const probePaths = uniquePaths([
     ...enrichedPaths,
+    ...graphSourceTestPaths,
     // The diagnostic pool exists to test whether the learned selector can
-    // recover model candidates that the current 64/128 policy misses. Keep
-    // the complete independent semantic lane ahead of optional graph tails;
-    // otherwise a large import graph can consume all 512 slots before a
-    // genuine model hit is made available to the ranker.
+    // recover candidates that the current 64/128 policy misses. Preserve
+    // exact source/test facts first, then keep the complete independent
+    // semantic lane ahead of optional graph tails; otherwise a large generic
+    // graph can consume all 512 slots before model evidence is available.
     ...semanticEvidencePaths,
     ...graphCorePaths,
     ...graphTailPaths,
@@ -458,6 +470,7 @@ export function buildModelCandidateUnion(input: {
     probeCandidateResults,
     semanticStatus: input.semanticStatus,
     graphPaths,
+    graphSourceTestPaths,
     graphImporterPaths,
     graphConsensusPaths,
     graphSeedPaths,
