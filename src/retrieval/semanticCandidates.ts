@@ -234,9 +234,9 @@ export function buildSemanticServingQueries(query: string): string[] {
   const fences = candidates.filter((candidate) => candidate.kind === "fence");
   const supportingView = boundedSemanticView(
     [
-      ...narratives.map((candidate) => candidate.text),
+      ...narratives.map((candidate) => ({ text: candidate.text, weight: 1 })),
       ...evenlySampleIncludingEndpoints(fences, Math.min(2, fences.length))
-        .map((candidate) => candidate.text)
+        .map((candidate) => ({ text: candidate.text, weight: 2 }))
     ],
     SEMANTIC_SUPPORTING_VIEW_CHARS
   );
@@ -246,23 +246,49 @@ export function buildSemanticServingQueries(query: string): string[] {
   )].slice(0, 3);
 }
 
-function boundedSemanticView(parts: string[], limit: number): string {
-  const normalizedParts = [...new Set(parts
-    .map((part) => normalizeSemanticQuery(part).trim())
-    .filter(Boolean))];
+function boundedSemanticView(
+  parts: Array<{ text: string; weight: number }>,
+  limit: number
+): string {
+  const normalizedParts = [...new Map(parts
+    .map((part) => ({
+      text: normalizeSemanticQuery(part.text).trim(),
+      weight: Math.max(1, Math.floor(part.weight))
+    }))
+    .filter((part) => Boolean(part.text))
+    .map((part) => [part.text, part] as const)).values()];
   if (normalizedParts.length === 0) return "";
   const separator = "\n\n";
   const contentBudget = Math.max(
     normalizedParts.length,
     limit - separator.length * (normalizedParts.length - 1)
   );
-  const baseShare = Math.floor(contentBudget / normalizedParts.length);
-  let remainder = contentBudget % normalizedParts.length;
-  return normalizedParts.map((part) => {
-    const share = baseShare + (remainder > 0 ? 1 : 0);
-    remainder = Math.max(0, remainder - 1);
-    return part.slice(0, share).trim();
-  }).filter(Boolean).join(separator).slice(0, limit).trim();
+  const allocations = normalizedParts.map(() => 0);
+  let remaining = contentBudget;
+  while (remaining > 0) {
+    const active = normalizedParts
+      .map((part, index) => ({ part, index }))
+      .filter(({ part, index }) => (allocations[index] ?? 0) < part.text.length);
+    if (active.length === 0) break;
+    const totalWeight = active.reduce((sum, { part }) => sum + part.weight, 0);
+    let allocated = 0;
+    for (const { part, index } of active) {
+      const available = part.text.length - (allocations[index] ?? 0);
+      const share = Math.min(
+        available,
+        remaining - allocated,
+        Math.max(1, Math.floor(remaining * part.weight / totalWeight))
+      );
+      allocations[index] = (allocations[index] ?? 0) + share;
+      allocated += share;
+      if (allocated >= remaining) break;
+    }
+    remaining -= Math.min(remaining, allocated);
+    if (allocated === 0) break;
+  }
+  return normalizedParts.map((part, index) =>
+    part.text.slice(0, allocations[index] ?? 0).trim()
+  ).filter(Boolean).join(separator).slice(0, limit).trim();
 }
 
 export function selectSemanticQueryViewIndexes(
