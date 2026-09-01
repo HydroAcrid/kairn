@@ -19,7 +19,13 @@ export type SemanticModelManifest = {
   normalize: true;
   queryPrefix: string;
   documentPrefix: string;
-  documentSchemaVersion: "semantic-documents-v4" | "semantic-documents-v5";
+  documentSchemaVersion:
+    | "semantic-documents-v4"
+    | "semantic-documents-v5"
+    | "semantic-documents-v6"
+    | "semantic-documents-v7"
+    | "semantic-documents-v8"
+    | "semantic-documents-v9";
   runtime: {
     library: "kairn-onnx-wasm-v1";
     modelFilePath: "onnx/model.onnx";

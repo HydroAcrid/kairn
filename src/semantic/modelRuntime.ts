@@ -10,10 +10,13 @@ import type { InferenceSession, OnnxValue, Tensor as OrtTensor } from "onnxrunti
 import type { SemanticEmbeddingRecord } from "../types.js";
 import {
   getSemanticModelState,
-  readInstalledSemanticModel,
   validateLocalModelPath
 } from "./modelManager.js";
-import { DEFAULT_SEMANTIC_MODEL_ID, type SemanticModelManifest } from "./modelRegistry.js";
+import {
+  DEFAULT_SEMANTIC_MODEL_ID,
+  getSemanticModelManifest,
+  type SemanticModelManifest
+} from "./modelRegistry.js";
 
 type OrtRuntime = typeof import("onnxruntime-web");
 
@@ -68,12 +71,16 @@ export async function loadLocalEmbeddingModel(input?: {
     throw new Error(state.error ?? `Semantic model ${modelId} is ${state.status}.`);
   }
   const modelPath = validateLocalModelPath(state.modelPath);
-  const receipt = readInstalledSemanticModel(modelPath);
+  // State validation proves the installed tokenizer and weights match the
+  // pinned artifact. Query and document metadata must come from this release:
+  // a compatible receipt can legitimately name a newer or older schema while
+  // the on-disk model files remain byte-identical.
+  const manifest = getSemanticModelManifest(modelId);
   const preferredRuntime = preferredSemanticRuntimeIdentity();
-  const cacheKey = `${modelPath}\0${receipt.manifestSha256}\0${preferredRuntime.runtimeId}`;
+  const cacheKey = `${modelPath}\0${state.manifestSha256}\0${preferredRuntime.runtimeId}`;
   const existing = pipelineCache.get(cacheKey);
   if (existing) return existing;
-  const loading = createLocalEmbeddingModel(modelPath, receipt.manifest);
+  const loading = createLocalEmbeddingModel(modelPath, manifest);
   pipelineCache.set(cacheKey, loading);
   try {
     return await loading;
