@@ -19,17 +19,20 @@ type OrtRuntime = typeof import("onnxruntime-web");
 type LoadedOnnxModel = {
   tokenizer: Tokenizer;
   session: InferenceSession;
+  runtimeBackend: "node" | "wasm";
 };
 
 export type LocalEmbeddingModel = {
   manifest: SemanticModelManifest;
   modelPath: string;
+  runtimeBackend: "node" | "wasm";
   embedQueries(texts: string[]): Promise<Float32Array[]>;
   embedDocuments(texts: string[]): Promise<Float32Array[]>;
 };
 
 export type SemanticModelRuntimeVerification = {
   modelId: string;
+  runtimeBackend: "node" | "wasm";
   dimensions: number;
   coldInitializationMs: number;
   batchInferenceMs: number;
@@ -43,6 +46,7 @@ export type SemanticModelRuntimeVerification = {
 
 const pipelineCache = new Map<string, Promise<LocalEmbeddingModel>>();
 let ortRuntimePromise: Promise<OrtRuntime> | undefined;
+let ortRuntimeBackend: "node" | "wasm" | undefined;
 
 export async function loadLocalEmbeddingModel(input?: {
   modelId?: string;
@@ -118,6 +122,7 @@ export async function verifyLocalEmbeddingModel(input?: {
   ];
   return {
     modelId: model.manifest.modelId,
+    runtimeBackend: model.runtimeBackend,
     dimensions: query.length,
     coldInitializationMs: rounded(coldInitializationMs),
     batchInferenceMs: rounded(batchInferenceMs),
@@ -218,6 +223,7 @@ async function createLocalEmbeddingModel(
   return {
     manifest,
     modelPath,
+    runtimeBackend: loaded.runtimeBackend,
     embedQueries: (texts) => embed(texts, manifest.queryPrefix),
     embedDocuments: (texts) => embed(texts, manifest.documentPrefix)
   };
@@ -236,7 +242,7 @@ async function loadOnnxModel(
     fs.readFileSync(path.join(modelPath, manifest.runtime.modelFilePath))
   );
   const session = await ort.InferenceSession.create(modelBytes, {
-    executionProviders: ["wasm"],
+    executionProviders: [ortRuntimeBackend === "node" ? "cpu" : "wasm"] as never,
     executionMode: "sequential",
     graphOptimizationLevel: "all",
     enableCpuMemArena: true,
@@ -246,17 +252,32 @@ async function loadOnnxModel(
     await session.release();
     throw new Error(`Semantic model ${manifest.modelId} has an incompatible ONNX interface.`);
   }
-  return { tokenizer, session };
+  return { tokenizer, session, runtimeBackend: ortRuntimeBackend ?? "wasm" };
 }
 
 async function getOrtRuntime(): Promise<OrtRuntime> {
   if (!ortRuntimePromise) {
-    ortRuntimePromise = import("onnxruntime-web").then((ort) => {
-      ort.env.wasm.numThreads = semanticInferenceThreads();
-      ort.env.wasm.proxy = false;
-      ort.env.wasm.initTimeout = 5_000;
-      return ort;
-    });
+    const preference = process.env.KAIRN_ONNX_BACKEND?.trim().toLowerCase();
+    if (preference && preference !== "node" && preference !== "wasm") {
+      throw new Error("KAIRN_ONNX_BACKEND must be 'node' or 'wasm'.");
+    }
+    ortRuntimePromise = (async () => {
+      if (preference !== "wasm") {
+        try {
+          const native = await import("onnxruntime-node");
+          ortRuntimeBackend = "node";
+          return native as unknown as OrtRuntime;
+        } catch (error) {
+          if (preference === "node") throw error;
+        }
+      }
+      const wasm = await import("onnxruntime-web");
+      wasm.env.wasm.numThreads = semanticInferenceThreads();
+      wasm.env.wasm.proxy = false;
+      wasm.env.wasm.initTimeout = 5_000;
+      ortRuntimeBackend = "wasm";
+      return wasm;
+    })();
   }
   return ortRuntimePromise;
 }
