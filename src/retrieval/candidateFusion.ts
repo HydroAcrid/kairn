@@ -13,8 +13,7 @@ import {
   DEFAULT_ENRICHED_CANDIDATE_LIMIT,
   DEFAULT_INITIAL_CANDIDATE_LIMIT,
   extractEvidenceTaskSignals,
-  isProductionEvidenceFile,
-  isTestEvidenceFile
+  isProductionEvidenceFile
 } from "./evidenceSignals.js";
 import {
   fuseSemanticCandidateRankings,
@@ -212,7 +211,7 @@ export function buildModelCandidateUnion(input: {
         ...semanticEvidencePaths
           .filter((filePath) =>
             !preliminaryGraphSeedPaths.includes(filePath) &&
-            isTestEvidenceFile(filesByPath.get(filePath)!)
+            filesByPath.get(filePath)?.kind === "test"
           )
           .slice(0, MAX_TEST_GRAPH_PROBE_PATHS),
         ...semanticEvidencePaths

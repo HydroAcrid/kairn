@@ -823,7 +823,7 @@ describe("model-based semantic candidates", () => {
     ]));
   });
 
-  it("recognizes path-classified test probes without giving them production rank", () => {
+  it("uses indexed repository roles rather than path text for graph-only test probes", () => {
     const rootPath = "/repo";
     // Some JavaScript suites use test/foo.js, which is objectively a test even
     // when the coarse scanner kind remains source.
@@ -850,9 +850,8 @@ describe("model-based semantic candidates", () => {
     });
 
     expect(result.initialPaths).not.toContain(testProbe.path);
-    expect(result.graphSeedPaths).toContain(testProbe.path);
-    expect(result.graphSeedRanks.get(testProbe.path)).toBeGreaterThan(64);
-    expect(result.enrichedPaths).toContain(implementation.path);
+    expect(result.graphSeedPaths).not.toContain(testProbe.path);
+    expect(result.enrichedPaths).not.toContain(implementation.path);
   });
 
   it("lets model evidence order equally precise parser-observed call relationships", () => {
