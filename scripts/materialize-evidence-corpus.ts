@@ -839,6 +839,17 @@ export function selectIntakeCases<T extends { id: string; split: Split }>(
   }
   const requestedCaseIds = options.caseIds ? new Set(options.caseIds) : undefined;
   const requestedSplits = options.splits ? new Set(options.splits) : undefined;
+  if (
+    options.draft &&
+    !options.limit &&
+    !requestedCaseIds &&
+    !requestedSplits &&
+    cases.some((item) => item.split === "holdout")
+  ) {
+    throw new Error(
+      "draft materialization containing holdout cases requires an explicit --split, --case-id, or --limit"
+    );
+  }
   const selectedCases = requestedCaseIds
     ? orderedCases.filter((item) => requestedCaseIds.has(item.id))
     : requestedSplits

@@ -691,6 +691,9 @@ describe("public evidence ranker training", () => {
       draft: false,
       splits: ["train", "calibration"]
     })).toThrow("partial materialization is allowed only with --draft");
+    expect(() => selectIntakeCases(cases, {
+      draft: true
+    })).toThrow("draft materialization containing holdout cases requires an explicit");
   });
 
   it("materializes candidate features from the same bounded serving path", async () => {

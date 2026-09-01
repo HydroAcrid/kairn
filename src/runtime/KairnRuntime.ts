@@ -3858,7 +3858,10 @@ export class KairnRuntime {
         config: semanticConfig,
         documents: this.store.listSemanticDocuments(input.rootPath),
         embeddings: this.store.listSemanticEmbeddings(input.rootPath),
-        limit: MODEL_RETRIEVAL_PROBE_LIMIT
+        limit: MODEL_RETRIEVAL_PROBE_LIMIT,
+        ...(input.diagnosticProbeLimit
+          ? { interactionLimit: input.files.length }
+          : {})
       });
       const semanticEvidencePaths = interleaveRankedPaths(
         (semanticSearch.queryRankings ?? []).map((ranking) =>
@@ -3872,6 +3875,9 @@ export class KairnRuntime {
         symbols: matchingSymbols,
         bm25Results: modelBm25Results,
         semanticHits: semanticSearch.hits,
+        ...(semanticSearch.interactionHits
+          ? { semanticInteractionHits: semanticSearch.interactionHits }
+          : {}),
         ...(semanticSearch.queryRankings
           ? { semanticQueryRankings: semanticSearch.queryRankings }
           : {}),
@@ -3892,6 +3898,9 @@ export class KairnRuntime {
         symbols: matchingSymbols,
         bm25Results: modelBm25Results,
         semanticHits: semanticSearch.hits,
+        ...(semanticSearch.interactionHits
+          ? { semanticInteractionHits: semanticSearch.interactionHits }
+          : {}),
         ...(semanticSearch.queryRankings
           ? { semanticQueryRankings: semanticSearch.queryRankings }
           : {}),

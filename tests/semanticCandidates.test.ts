@@ -232,6 +232,45 @@ describe("model-based semantic candidates", () => {
     });
   });
 
+  it("keeps broader semantic interactions separate from bounded serving hits", () => {
+    // The runtime-backed integration is covered by the five-language smoke.
+    // This unit-level contract verifies that the fusion input cannot promote
+    // an interaction-only file into the serving union.
+    const rootPath = "/repo";
+    const serving = file(rootPath, "src/serving.ts");
+    const interactionOnly = file(rootPath, "src/interaction-only.ts");
+    const result = buildModelCandidateUnion({
+      files: [serving, interactionOnly],
+      query: "repair authorization renewal",
+      symbols: [],
+      bm25Results: [],
+      semanticHits: [{
+        path: serving.path,
+        similarity: 0.9,
+        documentIds: ["serving"]
+      }],
+      semanticInteractionHits: [{
+        path: interactionOnly.path,
+        similarity: 0.8,
+        fileSimilarity: 0.8,
+        documentIds: ["interaction"]
+      }],
+      semanticEvidencePaths: [interactionOnly.path],
+      semanticStatus: readyStatus(2),
+      edges: [],
+      probeLimit: 2
+    });
+
+    expect(result.initialPaths).toEqual([serving.path]);
+    expect(result.probePaths).toContain(interactionOnly.path);
+    expect(result.semanticInteractions).toEqual([
+      expect.objectContaining({
+        path: interactionOnly.path,
+        fileSimilarity: 0.8
+      })
+    ]);
+  });
+
   it("admits a semantic-only production file outside the lexical union without admitting tier-zero noise", () => {
     const rootPath = "/repo";
     const files = [

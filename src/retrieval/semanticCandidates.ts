@@ -28,6 +28,11 @@ export type SemanticCandidateHit = {
 
 export type SemanticCandidateSearchResult = {
   hits: SemanticCandidateHit[];
+  /**
+   * Offline selector evidence for a broader, explicitly requested file set.
+   * This never changes the bounded serving hits above.
+   */
+  interactionHits?: SemanticCandidateHit[];
   queryRankings?: SemanticCandidateHit[][];
   status: SemanticRetrieverStatus;
 };
@@ -50,6 +55,8 @@ export async function searchSemanticCandidates(input: {
   documents: SemanticDocumentRecord[];
   embeddings: SemanticEmbeddingRecord[];
   limit?: number;
+  /** Offline diagnostics only; serving leaves this unset. */
+  interactionLimit?: number;
 }): Promise<SemanticCandidateSearchResult> {
   const modelId = input.config.modelId ?? DEFAULT_SEMANTIC_MODEL_ID;
   if (input.config.mode === "legacy") {
@@ -113,22 +120,34 @@ export async function searchSemanticCandidates(input: {
     const semanticQueries = buildSemanticServingQueries(input.query);
     const queryVectors = await model.embedQueries(semanticQueries);
     const scanStarted = performance.now();
-    const queryRankings = queryVectors.map((queryVector) => scoreSemanticEmbeddingIndex({
-        queryVector,
-        documents: input.documents,
-        embeddings: backendEmbeddings,
-        limit: Math.max(
-          input.limit ?? 64,
-          Math.min(SEMANTIC_DIAGNOSTIC_RANK_LIMIT, input.documents.length)
-        )
+    const candidateRankingLimit = Math.max(
+      input.limit ?? 64,
+      Math.min(SEMANTIC_DIAGNOSTIC_RANK_LIMIT, input.documents.length)
+    );
+    const interactionRankingLimit = Math.max(
+      candidateRankingLimit,
+      input.interactionLimit ?? 0
+    );
+    const interactionRankings = queryVectors.map((queryVector) => scoreSemanticEmbeddingIndex({
+      queryVector,
+      documents: input.documents,
+      embeddings: backendEmbeddings,
+      limit: interactionRankingLimit
       }));
+    const queryRankings = interactionRankings.map((ranking) =>
+      ranking.slice(0, candidateRankingLimit)
+    );
     const hits = fuseSemanticCandidateRankings(
       queryRankings,
       input.limit
     );
+    const interactionHits = input.interactionLimit
+      ? fuseSemanticCandidateRankings(interactionRankings, input.interactionLimit)
+      : undefined;
     const vectorScanLatencyMs = performance.now() - scanStarted;
     return {
       hits,
+      ...(interactionHits ? { interactionHits } : {}),
       queryRankings,
       status: {
         requestedMode: input.config.mode,

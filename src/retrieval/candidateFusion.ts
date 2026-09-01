@@ -82,6 +82,8 @@ export function buildModelCandidateUnion(input: {
   symbols: SymbolRecord[];
   bm25Results: HybridScoredResult[];
   semanticHits: SemanticCandidateHit[];
+  /** Offline model interactions; does not affect candidate admission or order. */
+  semanticInteractionHits?: SemanticCandidateHit[];
   semanticQueryRankings?: SemanticCandidateHit[][];
   semanticEvidencePaths?: string[];
   semanticStatus: SemanticRetrieverStatus;
@@ -462,6 +464,7 @@ export function buildModelCandidateUnion(input: {
   };
   const candidateResults = enrichedPaths.map(resultForPath);
   const probeCandidateResults = probePaths.map(resultForPath);
+  const probePathSet = new Set(probePaths);
   return {
     initialPaths,
     enrichedPaths,
@@ -478,12 +481,14 @@ export function buildModelCandidateUnion(input: {
     graphEvidenceByPath,
     semanticPaths,
     semanticEvidencePaths,
-    semanticInteractions: intentAwareSemanticHits.map((hit) => ({
+    semanticInteractions: (input.semanticInteractionHits ?? intentAwareSemanticHits)
+      .filter((hit) => probePathSet.has(normalizePath(hit.path)))
+      .map((hit) => ({
       path: normalizePath(hit.path),
       similarity: hit.similarity,
       ...(hit.fileSimilarity !== undefined ? { fileSimilarity: hit.fileSimilarity } : {}),
       ...(hit.symbolSimilarity !== undefined ? { symbolSimilarity: hit.symbolSimilarity } : {})
-    }))
+      }))
   };
 }
 
