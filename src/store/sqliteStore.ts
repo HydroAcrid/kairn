@@ -121,6 +121,8 @@ type SemanticEmbeddingRow = {
   document_id: string;
   document_hash: string;
   model_id: string;
+  runtime_backend: SemanticEmbeddingRecord["runtimeBackend"];
+  runtime_id: string;
   schema_version: SemanticEmbeddingRecord["schemaVersion"];
   dimensions: number;
   vector_blob: Buffer;
@@ -444,9 +446,9 @@ export class SqliteStore {
     `);
     const insertSemanticEmbedding = this.db.prepare(`
       insert into semantic_embeddings (
-        root_path, document_id, document_hash, model_id, schema_version, dimensions, vector_blob, scale
+        root_path, document_id, document_hash, model_id, runtime_backend, runtime_id, schema_version, dimensions, vector_blob, scale
       ) values (
-        @rootPath, @documentId, @documentHash, @modelId, @schemaVersion, @dimensions, @vectorBlob, @scale
+        @rootPath, @documentId, @documentHash, @modelId, @runtimeBackend, @runtimeId, @schemaVersion, @dimensions, @vectorBlob, @scale
       )
     `);
     const insertLexicalDocument = this.db.prepare(`
@@ -890,11 +892,12 @@ export class SqliteStore {
     if (records.length === 0) return;
     const statement = this.db.prepare(`
       insert into semantic_embeddings (
-        root_path, document_id, document_hash, model_id, schema_version, dimensions, vector_blob, scale
+        root_path, document_id, document_hash, model_id, runtime_backend, runtime_id, schema_version, dimensions, vector_blob, scale
       ) values (
-        @rootPath, @documentId, @documentHash, @modelId, @schemaVersion, @dimensions, @vectorBlob, @scale
+        @rootPath, @documentId, @documentHash, @modelId, @runtimeBackend, @runtimeId, @schemaVersion, @dimensions, @vectorBlob, @scale
       )
-      on conflict(root_path, document_id, model_id) do update set
+      on conflict(root_path, document_id, model_id, runtime_id) do update set
+        runtime_backend = excluded.runtime_backend,
         document_hash = excluded.document_hash,
         schema_version = excluded.schema_version,
         dimensions = excluded.dimensions,
@@ -1827,11 +1830,13 @@ export class SqliteStore {
         document_id text not null,
         document_hash text not null,
         model_id text not null,
+        runtime_backend text not null,
+        runtime_id text not null,
         schema_version text not null,
         dimensions integer not null,
         vector_blob blob not null,
         scale real not null,
-        primary key (root_path, document_id, model_id)
+        primary key (root_path, document_id, model_id, runtime_id)
       );
 
       create table if not exists lexical_documents (
@@ -2031,7 +2036,6 @@ export class SqliteStore {
       create index if not exists semantic_chunks_root_file_idx on semantic_chunks(root_path, file_path);
       create index if not exists semantic_vectors_root_chunk_idx on semantic_vectors(root_path, chunk_id);
       create index if not exists semantic_documents_root_file_idx on semantic_documents(root_path, file_path);
-      create index if not exists semantic_embeddings_root_model_idx on semantic_embeddings(root_path, model_id);
       create index if not exists lexical_documents_root_file_idx on lexical_documents(root_path, file_path);
       create index if not exists lexical_terms_root_term_idx on lexical_terms(root_path, term);
       create index if not exists lexical_terms_root_file_idx on lexical_terms(root_path, file_path);
@@ -2053,7 +2057,15 @@ export class SqliteStore {
       name: string;
       pk: number;
     }>;
-    if (columns.find((column) => column.name === "model_id")?.pk === 3) return;
+    if (columns.find((column) => column.name === "runtime_id")?.pk === 4) {
+      this.db.exec(
+        "create index if not exists semantic_embeddings_root_model_idx " +
+        "on semantic_embeddings(root_path, model_id, runtime_id)"
+      );
+      return;
+    }
+    const hasRuntimeBackend = columns.some((column) => column.name === "runtime_backend");
+    const hasRuntimeId = columns.some((column) => column.name === "runtime_id");
     this.db.exec(`
       begin immediate;
       alter table semantic_embeddings rename to semantic_embeddings_legacy;
@@ -2062,21 +2074,30 @@ export class SqliteStore {
         document_id text not null,
         document_hash text not null,
         model_id text not null,
+        runtime_backend text not null,
+        runtime_id text not null,
         schema_version text not null,
         dimensions integer not null,
         vector_blob blob not null,
         scale real not null,
-        primary key (root_path, document_id, model_id)
+        primary key (root_path, document_id, model_id, runtime_id)
       );
       insert into semantic_embeddings (
-        root_path, document_id, document_hash, model_id, schema_version, dimensions, vector_blob, scale
+        root_path, document_id, document_hash, model_id, runtime_backend, runtime_id, schema_version, dimensions, vector_blob, scale
       )
       select
-        root_path, document_id, document_hash, model_id, schema_version, dimensions, vector_blob, scale
+        root_path, document_id, document_hash, model_id,
+        ${hasRuntimeBackend ? "runtime_backend" : "'wasm'"},
+        ${hasRuntimeId
+          ? "runtime_id"
+          : hasRuntimeBackend
+            ? "case runtime_backend when 'node' then 'onnxruntime-node@unknown' else 'onnxruntime-web@1.27.0' end"
+            : "'onnxruntime-web@1.27.0'"},
+        schema_version, dimensions, vector_blob, scale
       from semantic_embeddings_legacy;
       drop table semantic_embeddings_legacy;
       create index semantic_embeddings_root_model_idx
-        on semantic_embeddings(root_path, model_id);
+        on semantic_embeddings(root_path, model_id, runtime_id);
       commit;
     `);
   }
@@ -2176,6 +2197,8 @@ function mapSemanticEmbeddingRow(row: SemanticEmbeddingRow): SemanticEmbeddingRe
     documentId: row.document_id,
     documentHash: row.document_hash,
     modelId: row.model_id,
+    runtimeBackend: row.runtime_backend,
+    runtimeId: row.runtime_id,
     schemaVersion: row.schema_version,
     dimensions: row.dimensions,
     vector: Int8Array.from(row.vector_blob),

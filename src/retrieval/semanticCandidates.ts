@@ -79,13 +79,11 @@ export async function searchSemanticCandidates(input: {
       document?.hash === embedding.documentHash
     );
   });
-  if (eligibleEmbeddings.length === 0 || eligibleEmbeddings.length !== input.documents.length) {
+  if (eligibleEmbeddings.length === 0) {
     return unavailableResult(
       input,
       "stale_index",
-      eligibleEmbeddings.length === 0
-        ? "No current model embeddings are indexed."
-        : `Semantic index coverage is stale (${eligibleEmbeddings.length}/${input.documents.length} documents).`,
+      "No current model embeddings are indexed.",
       modelState.modelId
     );
   }
@@ -96,13 +94,25 @@ export async function searchSemanticCandidates(input: {
       modelId,
       ...(input.config.modelPath ? { modelPath: input.config.modelPath } : {})
     });
+    const backendEmbeddings = eligibleEmbeddings.filter(
+      (embedding) =>
+        embedding.runtimeBackend === model.runtimeBackend && embedding.runtimeId === model.runtimeId
+    );
+    if (backendEmbeddings.length !== input.documents.length) {
+      return unavailableResult(
+        input,
+        "stale_index",
+        `Semantic index runtime coverage is stale (${backendEmbeddings.length}/${input.documents.length} documents for ${model.runtimeId}).`,
+        modelId
+      );
+    }
     const semanticQueries = buildSemanticServingQueries(input.query);
     const queryVectors = await model.embedQueries(semanticQueries);
     const scanStarted = performance.now();
     const queryRankings = queryVectors.map((queryVector) => scoreSemanticEmbeddingIndex({
         queryVector,
         documents: input.documents,
-        embeddings: eligibleEmbeddings,
+        embeddings: backendEmbeddings,
         limit: Math.max(
           input.limit ?? 64,
           Math.min(SEMANTIC_DIAGNOSTIC_RANK_LIMIT, input.documents.length)
@@ -123,7 +133,7 @@ export async function searchSemanticCandidates(input: {
         semanticRuntimeBackend: model.runtimeBackend,
         semanticIndexStatus: "ready",
         documentCount: input.documents.length,
-        embeddingCount: eligibleEmbeddings.length,
+        embeddingCount: backendEmbeddings.length,
         queryLatencyMs: Number((performance.now() - queryStarted).toFixed(3)),
         vectorScanLatencyMs: Number(vectorScanLatencyMs.toFixed(3))
       }

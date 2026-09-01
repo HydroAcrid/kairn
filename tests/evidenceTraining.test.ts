@@ -182,6 +182,8 @@ describe("public evidence ranker training", () => {
         documentId: "sdoc_test",
         documentHash: "content-hash",
         modelId: "pinned-model",
+        runtimeBackend: "wasm",
+        runtimeId: "onnxruntime-web@1.29.0",
         schemaVersion: "semantic-documents-v5",
         dimensions: 3,
         vector: new Int8Array([127, 0, -127]),
@@ -199,6 +201,8 @@ describe("public evidence ranker training", () => {
         documentId: "sdoc_second",
         documentHash: "second-content-hash",
         modelId: "pinned-model",
+        runtimeBackend: "wasm",
+        runtimeId: "onnxruntime-web@1.29.0",
         schemaVersion: "semantic-documents-v5",
         dimensions: 3,
         vector: new Int8Array([0, 127, 0]),
@@ -261,6 +265,8 @@ describe("public evidence ranker training", () => {
           documentId,
           documentHash,
           modelId: "pinned-model",
+          runtimeBackend: "wasm",
+          runtimeId: "onnxruntime-web@1.29.0",
           schemaVersion: "semantic-documents-v5",
           dimensions: 3,
           vector: new Int8Array([127, 0, -127]),
@@ -299,6 +305,7 @@ describe("public evidence ranker training", () => {
       repositoryLineageId: "https://github.com/example/project",
       repositoryRef: "1".repeat(40),
       modelId: "pinned-model",
+      runtimeId: "onnxruntime-web@1.29.0",
       documentEmbeddingManifestSha256: "a".repeat(64),
       documentSchemaVersion: "semantic-documents-v4" as const
     };
@@ -326,6 +333,10 @@ describe("public evidence ranker training", () => {
     expect(changedSchema).not.toBe(firstRef);
     expect(changedLineage).not.toBe(firstRef);
     expect(changedRef).not.toBe(firstRef);
+    expect(buildSemanticSnapshotCacheKey({
+      ...base,
+      runtimeId: "onnxruntime-node@1.14.0"
+    })).not.toBe(firstRef);
   });
 
   it("keys repository index snapshots only by immutable parser and model inputs", () => {
@@ -333,6 +344,7 @@ describe("public evidence ranker training", () => {
       repositoryLineageId: "https://github.com/example/project",
       repositoryRef: "1".repeat(40),
       modelManifestSha256: "a".repeat(64),
+      runtimeId: "onnxruntime-web@1.29.0",
       documentSchemaVersion: "semantic-documents-v5",
       implementationSha256: "b".repeat(64)
     };
@@ -346,6 +358,10 @@ describe("public evidence ranker training", () => {
     expect(buildRepositoryIndexSnapshotCacheKey({
       ...base,
       implementationSha256: "c".repeat(64)
+    })).not.toBe(first);
+    expect(buildRepositoryIndexSnapshotCacheKey({
+      ...base,
+      runtimeId: "onnxruntime-node@1.14.0"
     })).not.toBe(first);
   });
 
@@ -457,6 +473,7 @@ describe("public evidence ranker training", () => {
     const base = {
       repositoryLineageId: "https://github.com/example/project",
       modelId: "pinned-model",
+      runtimeId: "onnxruntime-web@1.29.0",
       documentEmbeddingManifestSha256: "a".repeat(64),
       documentSchemaVersion: "semantic-documents-v5" as const
     };
@@ -469,6 +486,10 @@ describe("public evidence ranker training", () => {
     expect(buildSemanticLineageCacheKey({
       ...base,
       documentEmbeddingManifestSha256: "b".repeat(64)
+    })).not.toBe(first);
+    expect(buildSemanticLineageCacheKey({
+      ...base,
+      runtimeId: "onnxruntime-node@1.14.0"
     })).not.toBe(first);
   });
 
@@ -488,6 +509,8 @@ describe("public evidence ranker training", () => {
           documentId: "sdoc_shared",
           documentHash,
           modelId: "pinned-model",
+          runtimeBackend: "wasm",
+          runtimeId: "onnxruntime-web@1.29.0",
           schemaVersion: "semantic-documents-v5",
           dimensions: 3,
           vector: new Int8Array([value, 0, -value]),

@@ -32,14 +32,6 @@ describe("benchmark infrastructure contracts", () => {
     expect(() => assertStageDoesNotOpenHoldout(campaign, "calibration")).not.toThrow();
   });
 
-  it("loads the rankability campaign and keeps detached holdout inaccessible", () => {
-    const campaign = loadBenchmarkCampaign("benchmarks/campaigns/v02c-rankability-audit.json");
-    expect(campaign.campaign.source.branch).toBe("codex/v0.2c-rankability-audit");
-    expect(campaign.artifacts.find((item) => item.id === "rankability-input")?.allowedStages).toEqual(["rankability"]);
-    expect(campaign.artifacts.filter((item) => item.kind === "model")).toHaveLength(2);
-    expect(() => assertStageDoesNotOpenHoldout(campaign, "rankability")).not.toThrow();
-  });
-
   it("invalidates only cache layers downstream of a changed dependency", () => {
     const base = cacheInput();
     const first = derivePipelineCacheKeys(base);

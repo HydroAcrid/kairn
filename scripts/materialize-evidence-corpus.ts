@@ -17,6 +17,7 @@ import {
   DEFAULT_SEMANTIC_MODEL_ID,
   getSemanticModelManifest
 } from "../src/semantic/modelRegistry.js";
+import { preferredSemanticRuntimeIdentity } from "../src/semantic/modelRuntime.js";
 import { SqliteStore } from "../src/store/sqliteStore.js";
 import { resolveRoot } from "../src/utils/paths.js";
 import {
@@ -723,9 +724,15 @@ function inspectEmbeddingReuse(
 }
 
 function semanticEmbeddingContentIdentity(
-  embedding: Pick<SemanticEmbeddingRecord, "documentId" | "documentHash" | "modelId" | "schemaVersion">
+  embedding: Pick<SemanticEmbeddingRecord, "documentId" | "documentHash" | "modelId" | "runtimeId" | "schemaVersion">
 ): string {
-  return [embedding.documentId, embedding.documentHash, embedding.modelId, embedding.schemaVersion].join("\0");
+  return [
+    embedding.documentId,
+    embedding.documentHash,
+    embedding.modelId,
+    embedding.runtimeId,
+    embedding.schemaVersion
+  ].join("\0");
 }
 
 function summarizeMaterializationTiming(reportCases: Array<Record<string, unknown>>): Record<string, unknown> {
@@ -1026,12 +1033,14 @@ function resolveCheckout(
 }
 
 type SnapshotEmbeddingCache = {
-  formatVersion: 1;
+  formatVersion: 1 | 2 | 3;
   cacheKey: string;
   embeddings: Array<{
     documentId: string;
     documentHash: string;
     modelId: string;
+    runtimeBackend: SemanticEmbeddingRecord["runtimeBackend"];
+    runtimeId: string;
     schemaVersion: SemanticEmbeddingRecord["schemaVersion"];
     dimensions: number;
     scale: number;
@@ -1055,10 +1064,12 @@ function semanticSnapshotCacheKey(intakeCase: IntakeCase): string {
   const documentEmbeddingManifestSha256 = semanticDocumentEmbeddingManifestSha256(
     getSemanticModelManifest(modelId)
   );
+  const runtime = preferredSemanticRuntimeIdentity();
   return buildSemanticSnapshotCacheKey({
     repositoryLineageId: intakeCase.repositoryLineageId,
     repositoryRef: intakeCase.repositoryRef,
     modelId,
+    runtimeId: runtime.runtimeId,
     documentEmbeddingManifestSha256,
     documentSchemaVersion: SEMANTIC_DOCUMENT_SCHEMA_VERSION
   });
@@ -1069,9 +1080,11 @@ function semanticLineageCacheKey(intakeCase: IntakeCase): string {
   const documentEmbeddingManifestSha256 = semanticDocumentEmbeddingManifestSha256(
     getSemanticModelManifest(modelId)
   );
+  const runtime = preferredSemanticRuntimeIdentity();
   return buildSemanticLineageCacheKey({
     repositoryLineageId: intakeCase.repositoryLineageId,
     modelId,
+    runtimeId: runtime.runtimeId,
     documentEmbeddingManifestSha256,
     documentSchemaVersion: SEMANTIC_DOCUMENT_SCHEMA_VERSION
   });
@@ -1079,10 +1092,12 @@ function semanticLineageCacheKey(intakeCase: IntakeCase): string {
 
 function repositoryIndexSnapshotCacheKey(intakeCase: IntakeCase, kairnRoot: string): string {
   const modelId = process.env.KAIRN_SEMANTIC_MODEL?.trim() || DEFAULT_SEMANTIC_MODEL_ID;
+  const runtime = preferredSemanticRuntimeIdentity();
   return buildRepositoryIndexSnapshotCacheKey({
     repositoryLineageId: intakeCase.repositoryLineageId,
     repositoryRef: intakeCase.repositoryRef,
     modelManifestSha256: semanticDocumentEmbeddingManifestSha256(getSemanticModelManifest(modelId)),
+    runtimeId: runtime.runtimeId,
     documentSchemaVersion: SEMANTIC_DOCUMENT_SCHEMA_VERSION,
     implementationSha256: repositoryIndexImplementationSha256(kairnRoot)
   });
@@ -1419,14 +1434,16 @@ export function buildSemanticSnapshotCacheKey(input: {
   repositoryLineageId: string;
   repositoryRef: string;
   modelId: string;
+  runtimeId: string;
   documentEmbeddingManifestSha256: string;
   documentSchemaVersion: SemanticEmbeddingRecord["schemaVersion"];
 }): string {
   return sha256([
-    "semantic-embedding-cache.v4",
+    "semantic-embedding-cache.v6",
     input.repositoryLineageId,
     input.repositoryRef,
     input.modelId,
+    input.runtimeId,
     input.documentEmbeddingManifestSha256,
     input.documentSchemaVersion
   ].join("\0"));
@@ -1435,13 +1452,15 @@ export function buildSemanticSnapshotCacheKey(input: {
 export function buildSemanticLineageCacheKey(input: {
   repositoryLineageId: string;
   modelId: string;
+  runtimeId: string;
   documentEmbeddingManifestSha256: string;
   documentSchemaVersion: SemanticEmbeddingRecord["schemaVersion"];
 }): string {
   return sha256([
-    "semantic-embedding-lineage-cache.v1",
+    "semantic-embedding-lineage-cache.v3",
     input.repositoryLineageId,
     input.modelId,
+    input.runtimeId,
     input.documentEmbeddingManifestSha256,
     input.documentSchemaVersion
   ].join("\0"));
@@ -1451,14 +1470,16 @@ export function buildRepositoryIndexSnapshotCacheKey(input: {
   repositoryLineageId: string;
   repositoryRef: string;
   modelManifestSha256: string;
+  runtimeId: string;
   documentSchemaVersion: string;
   implementationSha256: string;
 }): string {
   return sha256([
-    "repository-index-snapshot.v1",
+    "repository-index-snapshot.v2",
     input.repositoryLineageId,
     input.repositoryRef,
     input.modelManifestSha256,
+    input.runtimeId,
     input.documentSchemaVersion,
     input.implementationSha256
   ].join("\0"));
@@ -1660,6 +1681,8 @@ export function restoreSnapshotEmbeddingCache(rootPath: string, cachePath: strin
       documentId: embedding.documentId,
       documentHash: embedding.documentHash,
       modelId: embedding.modelId,
+      runtimeBackend: embedding.runtimeBackend,
+      runtimeId: embedding.runtimeId,
       schemaVersion: embedding.schemaVersion,
       dimensions: embedding.dimensions,
       scale: embedding.scale,
@@ -1697,6 +1720,8 @@ export function persistSnapshotEmbeddingCache(
       documentId: embedding.documentId,
       documentHash: embedding.documentHash,
       modelId: embedding.modelId,
+      runtimeBackend: embedding.runtimeBackend,
+      runtimeId: embedding.runtimeId,
       schemaVersion: embedding.schemaVersion,
       dimensions: embedding.dimensions,
       scale: embedding.scale,
@@ -1709,7 +1734,7 @@ export function persistSnapshotEmbeddingCache(
     merged.set(snapshotEmbeddingIdentity(serialized), serialized);
   }
   const payload: SnapshotEmbeddingCache = {
-    formatVersion: 1,
+    formatVersion: 3,
     cacheKey,
     embeddings: [...merged.values()].sort((left, right) =>
       left.documentId.localeCompare(right.documentId) ||
@@ -1755,10 +1780,15 @@ function embeddingCacheLedgerIdentity(cachePath: string): {
 function snapshotEmbeddingIdentity(
   embedding: Pick<
     SnapshotEmbeddingCache["embeddings"][number],
-    "documentId" | "modelId" | "schemaVersion"
+    "documentId" | "modelId" | "runtimeId" | "schemaVersion"
   >
 ): string {
-  return [embedding.documentId, embedding.modelId, embedding.schemaVersion].join("\0");
+  return [
+    embedding.documentId,
+    embedding.modelId,
+    embedding.runtimeId,
+    embedding.schemaVersion
+  ].join("\0");
 }
 
 function replaceSnapshotCache(cachePath: string, stagedPath: string): void {
@@ -1782,7 +1812,7 @@ function replaceSnapshotCache(cachePath: string, stagedPath: string): void {
 function parseSnapshotEmbeddingCache(cachePath: string): SnapshotEmbeddingCache {
   const parsed = record(JSON.parse(fs.readFileSync(cachePath, "utf8")), "snapshot embedding cache");
   const cacheKey = path.basename(cachePath, ".json");
-  if (parsed.formatVersion !== 1 || parsed.cacheKey !== cacheKey) {
+  if ((parsed.formatVersion !== 1 && parsed.formatVersion !== 2 && parsed.formatVersion !== 3) || parsed.cacheKey !== cacheKey) {
     throw new Error(`semantic embedding cache identity mismatch: ${cachePath}`);
   }
   const embeddings = array(parsed.embeddings, "snapshot embedding cache embeddings").map((value, index) => {
@@ -1811,13 +1841,32 @@ function parseSnapshotEmbeddingCache(cachePath: string): SnapshotEmbeddingCache 
       documentId: string(item.documentId, `snapshot embedding cache embeddings[${index}].documentId`),
       documentHash: string(item.documentHash, `snapshot embedding cache embeddings[${index}].documentHash`),
       modelId: string(item.modelId, `snapshot embedding cache embeddings[${index}].modelId`),
+      runtimeBackend: parsed.formatVersion === 1
+        ? "wasm"
+        : semanticRuntimeBackend(
+            item.runtimeBackend,
+            `snapshot embedding cache embeddings[${index}].runtimeBackend`
+          ),
+      runtimeId: parsed.formatVersion === 3
+        ? string(item.runtimeId, `snapshot embedding cache embeddings[${index}].runtimeId`)
+        : parsed.formatVersion === 2 && item.runtimeBackend === "node"
+          ? "onnxruntime-node@unknown"
+          : "onnxruntime-web@1.27.0",
       schemaVersion: supportedSchemaVersion,
       dimensions,
       scale: finiteNumber(item.scale, `snapshot embedding cache embeddings[${index}].scale`),
       vectorBase64
     };
   });
-  return { formatVersion: 1, cacheKey, embeddings };
+  return { formatVersion: parsed.formatVersion as 1 | 2 | 3, cacheKey, embeddings };
+}
+
+function semanticRuntimeBackend(
+  value: unknown,
+  label: string
+): SemanticEmbeddingRecord["runtimeBackend"] {
+  if (value !== "node" && value !== "wasm") throw new Error(`${label} must be node or wasm`);
+  return value;
 }
 
 function buildLabels(intakeCase: IntakeCase): Map<string, { label: 0 | 1; weight: number; provenance: string }> {

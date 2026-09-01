@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import { availableParallelism } from "node:os";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
@@ -20,12 +21,14 @@ type LoadedOnnxModel = {
   tokenizer: Tokenizer;
   session: InferenceSession;
   runtimeBackend: "node" | "wasm";
+  runtimeId: string;
 };
 
 export type LocalEmbeddingModel = {
   manifest: SemanticModelManifest;
   modelPath: string;
   runtimeBackend: "node" | "wasm";
+  runtimeId: string;
   embedQueries(texts: string[]): Promise<Float32Array[]>;
   embedDocuments(texts: string[]): Promise<Float32Array[]>;
 };
@@ -33,6 +36,7 @@ export type LocalEmbeddingModel = {
 export type SemanticModelRuntimeVerification = {
   modelId: string;
   runtimeBackend: "node" | "wasm";
+  runtimeId: string;
   dimensions: number;
   coldInitializationMs: number;
   batchInferenceMs: number;
@@ -47,6 +51,7 @@ export type SemanticModelRuntimeVerification = {
 const pipelineCache = new Map<string, Promise<LocalEmbeddingModel>>();
 let ortRuntimePromise: Promise<OrtRuntime> | undefined;
 let ortRuntimeBackend: "node" | "wasm" | undefined;
+let ortRuntimeId: string | undefined;
 
 export async function loadLocalEmbeddingModel(input?: {
   modelId?: string;
@@ -64,7 +69,8 @@ export async function loadLocalEmbeddingModel(input?: {
   }
   const modelPath = validateLocalModelPath(state.modelPath);
   const receipt = readInstalledSemanticModel(modelPath);
-  const cacheKey = `${modelPath}\0${receipt.manifestSha256}`;
+  const preferredRuntime = preferredSemanticRuntimeIdentity();
+  const cacheKey = `${modelPath}\0${receipt.manifestSha256}\0${preferredRuntime.runtimeId}`;
   const existing = pipelineCache.get(cacheKey);
   if (existing) return existing;
   const loading = createLocalEmbeddingModel(modelPath, receipt.manifest);
@@ -123,6 +129,7 @@ export async function verifyLocalEmbeddingModel(input?: {
   return {
     modelId: model.manifest.modelId,
     runtimeBackend: model.runtimeBackend,
+    runtimeId: model.runtimeId,
     dimensions: query.length,
     coldInitializationMs: rounded(coldInitializationMs),
     batchInferenceMs: rounded(batchInferenceMs),
@@ -146,6 +153,8 @@ export function quantizeSemanticEmbedding(input: {
   documentId: string;
   documentHash: string;
   modelId: string;
+  runtimeBackend: "node" | "wasm";
+  runtimeId: string;
   schemaVersion: SemanticEmbeddingRecord["schemaVersion"];
   vector: Float32Array;
 }): SemanticEmbeddingRecord {
@@ -161,6 +170,8 @@ export function quantizeSemanticEmbedding(input: {
     documentId: input.documentId,
     documentHash: input.documentHash,
     modelId: input.modelId,
+    runtimeBackend: input.runtimeBackend,
+    runtimeId: input.runtimeId,
     schemaVersion: input.schemaVersion,
     dimensions: vector.length,
     vector,
@@ -224,6 +235,7 @@ async function createLocalEmbeddingModel(
     manifest,
     modelPath,
     runtimeBackend: loaded.runtimeBackend,
+    runtimeId: loaded.runtimeId,
     embedQueries: (texts) => embed(texts, manifest.queryPrefix),
     embedDocuments: (texts) => embed(texts, manifest.documentPrefix)
   };
@@ -252,7 +264,12 @@ async function loadOnnxModel(
     await session.release();
     throw new Error(`Semantic model ${manifest.modelId} has an incompatible ONNX interface.`);
   }
-  return { tokenizer, session, runtimeBackend: ortRuntimeBackend ?? "wasm" };
+  return {
+    tokenizer,
+    session,
+    runtimeBackend: ortRuntimeBackend ?? "wasm",
+    runtimeId: ortRuntimeId ?? installedRuntimeIdentity("onnxruntime-web", "wasm")
+  };
 }
 
 async function getOrtRuntime(): Promise<OrtRuntime> {
@@ -272,6 +289,7 @@ async function getOrtRuntime(): Promise<OrtRuntime> {
           const native = namespace.InferenceSession ? namespace : namespace.default;
           if (!native) throw new Error("onnxruntime-node has no runtime export.");
           ortRuntimeBackend = "node";
+          ortRuntimeId = installedRuntimeIdentity("onnxruntime-node", "node");
           return native as unknown as OrtRuntime;
         } catch (error) {
           if (preference === "node") throw error;
@@ -282,10 +300,61 @@ async function getOrtRuntime(): Promise<OrtRuntime> {
       wasm.env.wasm.proxy = false;
       wasm.env.wasm.initTimeout = 5_000;
       ortRuntimeBackend = "wasm";
+      ortRuntimeId = installedRuntimeIdentity("onnxruntime-web", "wasm");
       return wasm;
     })();
   }
   return ortRuntimePromise;
+}
+
+export function preferredSemanticRuntimeBackend(): "node" | "wasm" {
+  return preferredSemanticRuntimeIdentity().runtimeBackend;
+}
+
+export function preferredSemanticRuntimeIdentity(): {
+  runtimeBackend: "node" | "wasm";
+  runtimeId: string;
+} {
+  const preference = process.env.KAIRN_ONNX_BACKEND?.trim().toLowerCase();
+  if (preference === "node") {
+    return { runtimeBackend: "node", runtimeId: installedRuntimeIdentity("onnxruntime-node", "node") };
+  }
+  if (preference === "wasm") {
+    return { runtimeBackend: "wasm", runtimeId: installedRuntimeIdentity("onnxruntime-web", "wasm") };
+  }
+  if (preference) throw new Error("KAIRN_ONNX_BACKEND must be 'node' or 'wasm'.");
+  try {
+    return {
+      runtimeBackend: "node",
+      runtimeId: installedRuntimeIdentity("onnxruntime-node", "node")
+    };
+  } catch {
+    return {
+      runtimeBackend: "wasm",
+      runtimeId: installedRuntimeIdentity("onnxruntime-web", "wasm")
+    };
+  }
+}
+
+function installedRuntimeIdentity(
+  packageName: "onnxruntime-node" | "onnxruntime-web",
+  backend: "node" | "wasm"
+): string {
+  const require = createRequire(import.meta.url);
+  let current = path.dirname(require.resolve(packageName));
+  while (true) {
+    const packagePath = path.join(current, "package.json");
+    if (fs.existsSync(packagePath)) {
+      const parsed = readJson(packagePath) as { name?: unknown; version?: unknown };
+      if (parsed.name === packageName && typeof parsed.version === "string") {
+        return `${packageName}@${parsed.version}`;
+      }
+    }
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  throw new Error(`Cannot determine installed ${backend} semantic runtime version for ${packageName}.`);
 }
 
 function semanticInferenceThreads(): number {
