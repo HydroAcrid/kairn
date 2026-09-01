@@ -544,6 +544,52 @@ describe("model-based semantic candidates", () => {
     expect(result.enrichedPaths).not.toContain(importer.path);
   });
 
+  it("admits a primary-seed reverse importer when the model independently ranks it", () => {
+    const rootPath = "/repo";
+    const dependency = file(rootPath, "src/runtime/dependency.ts");
+    const importer = file(rootPath, "src/runtime/adapter.ts");
+    const primary = [
+      dependency,
+      ...Array.from({ length: 63 }, (_, index) =>
+        file(rootPath, `src/primary-${String(index).padStart(2, "0")}.ts`)
+      )
+    ];
+    const preciseNeighbors = Array.from({ length: 70 }, (_, index) =>
+      file(rootPath, `src/runtime/call-${String(index).padStart(2, "0")}.ts`)
+    );
+    const primaryRankings = [0, 1].map((view) => [
+      ...primary.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 0.95 - (index + view) / 1_000,
+        documentIds: [`primary-${view}-${index}`]
+      })),
+      {
+        path: importer.path,
+        similarity: 0.7 - view / 1_000,
+        documentIds: [`primary-importer-${view}`]
+      }
+    ]);
+    const result = buildModelCandidateUnion({
+      files: [...primary, importer, ...preciseNeighbors],
+      query: "Repair the production module behavior.",
+      symbols: [],
+      bm25Results: [],
+      semanticHits: [],
+      semanticQueryRankings: primaryRankings,
+      semanticStatus: readyStatus(primary.length + 1),
+      edges: [
+        edge(rootPath, importer.path, dependency.path, "imports"),
+        ...preciseNeighbors.map((neighbor, index) =>
+          edge(rootPath, primary[index % primary.length]!.path, neighbor.path, "call")
+        )
+      ]
+    });
+
+    expect(result.initialPaths).not.toContain(importer.path);
+    expect(result.graphImporterPaths[0]).toBe(importer.path);
+    expect(result.enrichedPaths).toContain(importer.path);
+  });
+
   it("preserves the bounded model-evidence tail when independent lexical results compete", () => {
     const rootPath = "/repo";
     const semanticFiles = Array.from({ length: 80 }, (_, index) =>

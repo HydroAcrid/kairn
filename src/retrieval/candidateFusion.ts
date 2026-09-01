@@ -296,6 +296,7 @@ export function buildModelCandidateUnion(input: {
       ],
       seedRanks: graphSeedRanks,
       relationMode: "model_corroborated_reverse_import",
+      primarySemanticEvidencePaths: new Set(semanticPaths),
       graphEvidenceByPath
     }),
     signals.intent,
@@ -568,6 +569,7 @@ export function rankEvidenceBackedGraphCandidates(input: {
   minimumSeedSupport?: number;
   ordering?: "precision" | "support";
   relationMode?: "all" | "model_corroborated_reverse_import";
+  primarySemanticEvidencePaths?: ReadonlySet<string>;
   graphEvidenceByPath?: Map<string, EvidenceGraphFacts>;
 }): string[] {
   const primarySeeds = uniquePaths(input.seedPaths);
@@ -612,10 +614,16 @@ export function rankEvidenceBackedGraphCandidates(input: {
     if (!seedRank || !neighbor || seedPath === neighborPath || neighbor.indexTier === "tier0") return;
     const independentEvidence = evidenceRanks.get(neighborPath);
     const isModelCorroboratedReverseImporter = (
-      probeSeedSet.has(seedPath) &&
       edge.type === "imports" &&
       direction === "reverse" &&
-      (independentEvidence?.has("semantic") ?? false)
+      (independentEvidence?.has("semantic") ?? false) &&
+      (
+        probeSeedSet.has(seedPath) ||
+        (
+          primarySeedSet.has(seedPath) &&
+          (input.primarySemanticEvidencePaths?.has(neighborPath) ?? false)
+        )
+      )
     );
     if (
       input.relationMode === "model_corroborated_reverse_import" &&
@@ -904,21 +912,29 @@ function weightedInterleavePaths(
   let progressed = true;
   while (selected.length < boundedLimit && progressed) {
     progressed = false;
-    for (const lane of lanes) {
-      let taken = 0;
-      while (
-        taken < lane.weight &&
-        lane.cursor < lane.paths.length &&
-        selected.length < boundedLimit
-      ) {
-        const filePath = lane.paths[lane.cursor]!;
-        lane.cursor += 1;
-        if (seen.has(filePath)) continue;
-        selected.push(filePath);
-        seen.add(filePath);
-        taken += 1;
-        progressed = true;
+    const maximumWeight = lanes.reduce(
+      (maximum, lane) => Math.max(maximum, lane.weight),
+      0
+    );
+    // Each active lane gets one opportunity before a higher-weight lane gets
+    // its additional turns. Taking all weighted turns from the first lane at
+    // once makes a short bounded tail observationally exclude every later
+    // evidence source.
+    for (let turn = 1; turn <= maximumWeight; turn += 1) {
+      for (const lane of lanes) {
+        if (lane.weight < turn) continue;
+        while (lane.cursor < lane.paths.length && selected.length < boundedLimit) {
+          const filePath = lane.paths[lane.cursor]!;
+          lane.cursor += 1;
+          if (seen.has(filePath)) continue;
+          selected.push(filePath);
+          seen.add(filePath);
+          progressed = true;
+          break;
+        }
+        if (selected.length >= boundedLimit) break;
       }
+      if (selected.length >= boundedLimit) break;
     }
   }
   return selected;
