@@ -17,10 +17,22 @@ function blocked(operation) {
   };
 }
 
+function localIpcOnly(operation, original) {
+  return function denyOutboundButAllowLocalIpc(...args) {
+    const first = args[0];
+    const options = Array.isArray(first) ? first[0] : first;
+    const isLocalSocket = typeof options === "string"
+      || (options && typeof options === "object" && typeof options.path === "string"
+        && options.port === undefined && options.host === undefined);
+    if (isLocalSocket) return Reflect.apply(original, this, args);
+    return blocked(operation)();
+  };
+}
+
 const net = require("node:net");
-net.connect = blocked("net.connect");
-net.createConnection = blocked("net.createConnection");
-net.Socket.prototype.connect = blocked("net.Socket.connect");
+net.connect = localIpcOnly("net.connect", net.connect);
+net.createConnection = localIpcOnly("net.createConnection", net.createConnection);
+net.Socket.prototype.connect = localIpcOnly("net.Socket.connect", net.Socket.prototype.connect);
 
 const tls = require("node:tls");
 tls.connect = blocked("tls.connect");

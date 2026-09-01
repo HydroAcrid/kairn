@@ -15,6 +15,7 @@ const queries = [
   { id: "cpp", query: "Accumulate packet bytes to validate the transport checksum." }
 ];
 const scriptPath = fileURLToPath(import.meta.url);
+const networkBlockerPath = path.resolve(path.dirname(scriptPath), "deny-network.cjs");
 const workerIndex = process.argv.indexOf("--worker");
 if (workerIndex >= 0) {
   const root = process.argv[workerIndex + 1];
@@ -25,6 +26,7 @@ if (workerIndex >= 0) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-tier-b-"));
   try {
     writeFixture(root);
+    verifyNetworkGuard(root);
     const first = isolatedRun(root);
     const second = isolatedRun(root);
     if (second.createdEmbeddings !== 0 || second.reusedEmbeddings < first.documentCount) {
@@ -36,15 +38,37 @@ if (workerIndex >= 0) {
     if (changed.createdEmbeddings < 1 || changed.reusedEmbeddings < 1) {
       throw new Error("changed-file run did not combine incremental embedding with unchanged snapshot reuse");
     }
+    const networkAttemptLog = path.join(root, "network-attempts.log");
+    if (fs.existsSync(networkAttemptLog) && fs.readFileSync(networkAttemptLog, "utf8").trim()) {
+      throw new Error(`Tier B attempted outbound networking:\n${fs.readFileSync(networkAttemptLog, "utf8")}`);
+    }
     const durationMs = Date.now() - started;
     if (durationMs > 15 * 60_000) throw new Error(`Tier B exceeded its 15 minute budget (${durationMs} ms).`);
     process.stdout.write(`${JSON.stringify({
       schemaVersion: "benchmark-tier-b.v1", fixtureNotEvidence: true, valid: true, offline: true,
+      networkGuard: "node_network_blocked",
       languages: ["python", "typescript", "go", "java", "cpp"], durationMs,
       first: summary(first), second: summary(second), changed: summary(changed)
     }, null, 2)}\n`);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
+function verifyNetworkGuard(root: string): void {
+  const guardProbeLog = path.join(root, "network-guard-probe.log");
+  const result = spawnSync(process.execPath, [
+    "--require",
+    networkBlockerPath,
+    "--eval",
+    'fetch("https://tier-b-offline.invalid")'
+  ], {
+    encoding: "utf8",
+    env: { ...process.env, KAIRN_NETWORK_ATTEMPT_LOG: guardProbeLog }
+  });
+  const probe = fs.existsSync(guardProbeLog) ? fs.readFileSync(guardProbeLog, "utf8") : "";
+  if (result.status === 0 || !probe.includes("Blocked outbound network operation")) {
+    throw new Error("Tier B network guard probe did not reject and record a fetch attempt");
   }
 }
 
@@ -75,10 +99,17 @@ async function runWorker(root: string): Promise<void> {
 
 function isolatedRun(root: string): WorkerResult {
   const result = spawnSync(process.execPath, [
-    path.resolve("node_modules/tsx/dist/cli.mjs"), scriptPath, "--worker", root
+    "--import", "tsx", scriptPath, "--worker", root
   ], {
     cwd: path.resolve(path.dirname(scriptPath), ".."), encoding: "utf8", timeout: 5 * 60_000,
-    env: { ...process.env, KAIRN_CANDIDATE_MODE: "semantic", KAIRN_SEMANTIC_MODEL: "jina-code-v2-q8" }
+    env: {
+      ...process.env,
+      NODE_OPTIONS: [process.env.NODE_OPTIONS, `--require=${networkBlockerPath}`].filter(Boolean).join(" "),
+      KAIRN_NETWORK_ATTEMPT_LOG: path.join(root, "network-attempts.log"),
+      KAIRN_CANDIDATE_MODE: "semantic",
+      KAIRN_SEMANTIC_MODEL: "jina-code-v2-q8",
+      KAIRN_TELEMETRY_ENABLED: "0"
+    }
   });
   if (result.status !== 0) throw new Error(`Tier B isolated worker failed: ${result.stderr || result.stdout}`);
   return JSON.parse(result.stdout.trim()) as WorkerResult;

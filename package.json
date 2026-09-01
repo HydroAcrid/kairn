@@ -35,6 +35,7 @@
     "smoke:offline": "node scripts/offline-runtime-smoke.mjs",
     "smoke:enable-disable": "node scripts/enable-disable-smoke.mjs",
     "smoke:package": "node scripts/smoke-packed-package.mjs",
+    "smoke:semantic-package": "node scripts/smoke-semantic-packed-package.mjs",
     "verify:ranker-sample": "node scripts/verify-sample-model.mjs",
     "verify:ranker-promotion-sample": "python3 scripts/evaluate-ranker-promotion.py --input benchmarks/evidence-promotion.sample.json --allow-sample",
     "verify:codex-pilot-smoke": "vitest run tests/codexPilot.test.ts",
