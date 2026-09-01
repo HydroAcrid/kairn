@@ -1,0 +1,110 @@
+{
+  "schemaVersion": "benchmark-checkpoint.v1",
+  "checkpointId": "v02c-semantic-release-candidate-e0c0dfb",
+  "recordedAt": "2026-09-01",
+  "branch": "codex/v0.2c-semantic-release-candidate",
+  "sourceCommit": "e0c0dfb5125108d32af89104dd4e308e2d95aad1",
+  "campaign": "benchmarks/campaigns/v02c-semantic-release-candidate.json",
+  "decision": "freeze_semantic_candidate_generation",
+  "mechanism": {
+    "modelId": "jina-code-v2-q8",
+    "documentSchemaVersion": "semantic-documents-v5",
+    "featureSchemaVersion": "evidence-features-v5",
+    "candidateLimits": { "initial": 64, "bounded": 128 },
+    "runtimeIsolation": "Embedding reuse requires an exact runtime package and version identity.",
+    "nativeRuntime": "onnxruntime-node@1.14.0",
+    "fallbackRuntime": "onnxruntime-web@1.29.0"
+  },
+  "coverage": {
+    "hardCaseStress": {
+      "cases": 4,
+      "artifact": "artifacts/candidate-coverage-v40-semantic-hard-native-matched.report.json",
+      "sha256": "64b19a887c1d2673e4018e952044efd0709714806841bece41078bc33178f969",
+      "strictFullRecallAt128": { "numerator": 4, "denominator": 4, "value": 1.0 },
+      "boundedPoolMisses": 0,
+      "developmentOnly": true
+    },
+    "balancedReviewedCohort": {
+      "cases": 15,
+      "requiredFiles": 22,
+      "candidateArtifact": "artifacts/candidate-coverage-v41-balanced15-native-matched.json",
+      "candidateSha256": "48df74475a1ee273874b7e113c4959b5290f0295448a021b809ecaeb8cf37cef",
+      "candidateReportSha256": "0ba730deecaaccab0c993b0b1f26cdd310c722f61529ca39a247a800399d7298",
+      "evaluationArtifact": "artifacts/balanced-required-source.v41-native-matched-v185.json",
+      "evaluationSha256": "92e8d29bb4e2e575a3631343d78211c71babe7bc4771db8850443c1f770c2b67",
+      "requiredFileRecallAt5": { "numerator": 16, "denominator": 22, "value": 0.7272727272727273 },
+      "requiredFileRecallAt64": { "numerator": 22, "denominator": 22, "value": 1.0 },
+      "strictFullCaseRecallAt64": { "numerator": 15, "denominator": 15, "value": 1.0 },
+      "mrr": 0.4831814765817635,
+      "expectedCalibrationError": 0.031721474342649304,
+      "generatedVendorTopOneViolations": 0,
+      "sameRankerBaseline": {
+        "requiredFileRecallAt5": { "numerator": 15, "denominator": 22, "value": 0.6818181818181818 },
+        "requiredFileRecallAt64": { "numerator": 22, "denominator": 22, "value": 1.0 },
+        "mrr": 0.47947588255185336
+      },
+      "pairedBootstrap": {
+        "resamples": 100000,
+        "seed": "0x20260901",
+        "recallAt5DeltaPercentagePoints": 4.54545454545455,
+        "recallAt5Delta95CiPercentagePoints": [0, 15],
+        "mrrDelta": 0.00370559402991014,
+        "mrrDelta95Ci": [-0.000181, 0.0125]
+      },
+      "developmentOnly": true
+    }
+  },
+  "runtime": {
+    "native": {
+      "artifact": "artifacts/semantic-runtime-native114-v12.json",
+      "sha256": "6234ad8f21640027ba38c3156a9458697aad0319f87bcc63d9bd97d026925753",
+      "coldInitializationMs": 595.596,
+      "warmQueryP95Ms": 13.917,
+      "vectorScanP95Ms": 22.641,
+      "allGatesPassed": true
+    },
+    "wasm": {
+      "artifact": "artifacts/semantic-runtime-wasm129-v12.json",
+      "sha256": "583f2d1a7acdef19a2e9d0c0ce5aec50db94c9299eea2584dd1acafbec112d24",
+      "coldInitializationMs": 718.521,
+      "warmQueryP95Ms": 78.163,
+      "vectorScanP95Ms": 28.067,
+      "allGatesPassed": true
+    },
+    "cache": {
+      "retainedGiB": 6.23,
+      "limitGiB": 8,
+      "warmCandidatePathsByteIdentical": true,
+      "warmEmbeddingsCreated": 0
+    }
+  },
+  "packageValidation": {
+    "normalInstall": {
+      "runtime": "onnxruntime-node@1.14.0",
+      "installedBytes": 335165819,
+      "modelVerified": true
+    },
+    "optionalDependencyFreeInstall": {
+      "runtime": "onnxruntime-web@1.29.0",
+      "installedBytes": 238090654,
+      "modelVerified": true
+    },
+    "offlineNetworkGuard": true,
+    "ordinaryEnableDisableSmoke": true
+  },
+  "validation": {
+    "doctor": "valid",
+    "tierA": { "valid": true, "durationMs": 13803 },
+    "tierB": { "valid": true, "durationMs": 8244, "languages": 5, "networkBlocked": true },
+    "tests": { "files": 50, "tests": 753, "passed": 753 },
+    "semanticArchitectureGuard": true,
+    "gitCleanAndPushed": true
+  },
+  "limitations": [
+    "The balanced cohort and ranker are development evidence, not sealed-holdout or public effectiveness evidence.",
+    "The Recall@5 improvement interval includes zero and is not a statistically established gain.",
+    "The previously detached holdout is permanently ineligible because its identities were exposed.",
+    "No paid Claude or ReasonBlocks call was made for this checkpoint."
+  ],
+  "nextStage": "Freeze the semantic generator and rematerialize the lineage-safe train/calibration rows on these exact candidate pools before fitting the calibrated ranker."
+}

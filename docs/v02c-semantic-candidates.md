@@ -594,3 +594,52 @@ production API or symbol; the independent offline verifier and required-touch
 gate prove the behavioral repair. A regression test covers the Java refactor
 that exposed the defect. The restarted campaign must use the new plan hash and
 Kairn commit, and none of the earlier partial results may be mixed into it.
+
+## Semantic candidate release-candidate freeze
+
+The semantic generator is now frozen at implementation commit `e0c0dfb`.
+During the final cold/warm comparison, one required Go source disappeared only
+when document embeddings created by the WebAssembly runtime were reused with a
+native-runtime query embedding. Embedding identity now includes the exact
+inference runtime package and version. Native and WebAssembly vectors can no
+longer be mixed through SQLite, snapshots, repository caches, or in-memory
+reuse.
+
+After rebuilding with one runtime throughout, all four previously difficult
+required-source cases entered the bounded 128-file pool. The unchanged warm
+run created zero embeddings and produced byte-identical candidate paths. On
+the frozen balanced development cohort, the same v185 ranker found all 22
+required files within 64 and moved one additional file into the top five:
+
+| Metric | Previous frozen pool | Runtime-matched semantic pool | Delta |
+| --- | ---: | ---: | ---: |
+| Required-file Recall@5 | 68.18% (15/22) | 72.73% (16/22) | +4.55 pp |
+| Required-file Recall@64 | 100.00% (22/22) | 100.00% (22/22) | 0 pp |
+| Strict full case Recall@64 | 100.00% (15/15) | 100.00% (15/15) | 0 pp |
+| MRR | 0.4795 | 0.4832 | +0.0037 |
+| ECE | 0.0317 | 0.0317 | 0 |
+
+The paired Recall@5 interval is 0 to +15 percentage points; the MRR interval
+also crosses zero. This is a modest positive internal result, not a proven or
+publicly claimable accuracy improvement.
+
+Native CPU inference initializes in 596 ms, produces warm queries in 13.9 ms
+p95, and scans 7,500 vectors in 22.6 ms p95. The WebAssembly fallback remains
+within its gates at 719 ms cold, 78.2 ms warm-query p95, and 28.1 ms scan p95.
+A normal packed install selected `onnxruntime-node@1.14.0`; an install without
+optional dependencies selected `onnxruntime-web@1.29.0`. Both verified the
+checksummed local model. Five-language Tier B completed with Node networking
+blocked, proving installed-model retrieval does not need a Kairn service.
+
+The exact pushed commit passed the benchmark doctor, Tier A in 13.8 seconds,
+Tier B in 8.2 seconds, all 753 tests, the semantic architecture guard, ordinary
+packed enable/disable, and both packed semantic runtime paths. The benchmark
+cache retained 6.23 GiB under its 8 GiB limit.
+
+This closes semantic candidate tuning. The next stage reuses this exact
+generator to rebuild lineage-safe train/calibration rows and fit the calibrated
+file ranker. It does not permit new path-token, task-term, filename, fixture,
+or regular-expression relevance rules. The old holdout remains tombstoned;
+public accuracy and token claims still require fresh sealed and live evidence.
+Exact hashes are recorded in
+`benchmarks/checkpoints/v02c-semantic-release-candidate-e0c0dfb.json`.
