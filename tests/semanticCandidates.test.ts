@@ -498,6 +498,50 @@ describe("model-based semantic candidates", () => {
     expect(result.graphEvidenceByPath.get(importer.path)?.seedStrength).toBeGreaterThan(0.3);
   });
 
+  it("lets a primary model seed recover a semantically corroborated direct importer", () => {
+    const rootPath = "/repo";
+    const dependency = file(rootPath, "src/runtime/dependency.ts");
+    const importer = file(rootPath, "src/runtime/adapter.ts");
+    const primary = [
+      dependency,
+      ...Array.from({ length: 63 }, (_, index) =>
+        file(rootPath, `src/primary-${String(index).padStart(2, "0")}.ts`)
+      )
+    ];
+    const preciseNeighbors = Array.from({ length: 70 }, (_, index) =>
+      file(rootPath, `src/runtime/call-${String(index).padStart(2, "0")}.ts`)
+    );
+    const primaryRankings = [0, 1].map((view) =>
+      primary.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 0.95 - (index + view) / 1_000,
+        documentIds: [`primary-${view}-${index}`]
+      }))
+    );
+    const result = buildModelCandidateUnion({
+      files: [...primary, importer, ...preciseNeighbors],
+      query: "Repair the production module behavior.",
+      symbols: [],
+      bm25Results: [],
+      semanticHits: [],
+      semanticQueryRankings: [
+        ...primaryRankings,
+        [{ path: importer.path, similarity: 0.7, documentIds: ["secondary-importer"] }]
+      ],
+      semanticStatus: readyStatus(primary.length + 1),
+      edges: [
+        edge(rootPath, importer.path, dependency.path, "imports"),
+        ...preciseNeighbors.map((neighbor, index) =>
+          edge(rootPath, primary[index % primary.length]!.path, neighbor.path, "call")
+        )
+      ]
+    });
+
+    expect(result.graphPaths.indexOf(importer.path)).toBeGreaterThanOrEqual(64);
+    expect(result.graphImporterPaths).toContain(importer.path);
+    expect(result.enrichedPaths).toContain(importer.path);
+  });
+
   it("preserves the bounded model-evidence tail when independent lexical results compete", () => {
     const rootPath = "/repo";
     const semanticFiles = Array.from({ length: 80 }, (_, index) =>
@@ -1465,7 +1509,7 @@ describe("model-based semantic candidates", () => {
     expect(queries.some((query) => query.includes("invalid credential"))).toBe(true);
   });
 
-  it("serves an independent headline and bounded late-narrative synopsis", () => {
+  it("serves independent headline and narrative endpoints without semantic dilution", () => {
     const queries = buildSemanticServingQueries([
       "Authorization cleanup leaves stale records.",
       "",
@@ -1473,14 +1517,15 @@ describe("model-based semantic candidates", () => {
       "",
       `A separate persistence layer must remove the associated lease. ${"middle context ".repeat(45)}`,
       "",
-      `The final adapter should report the invalid credential consistently. ${"late context ".repeat(45)}`
+      `The final adapter should report the invalid credential consistently. ${"late context ".repeat(25)}`
     ].join("\n"));
 
-    expect(queries).toHaveLength(2);
+    expect(queries).toHaveLength(3);
     expect(queries[0]).toContain("Authorization cleanup leaves stale records");
-    expect(queries[1]).toContain("Authorization cleanup leaves stale records");
     expect(queries[1]).toContain("invalid credential");
     expect(queries[1]).not.toContain("associated lease");
+    expect(queries[2]).toContain("expired session state");
+    expect(queries[2]).not.toContain("invalid credential");
     expect(queries.every((query) => query.length <= 1_600)).toBe(true);
   });
 
@@ -1512,6 +1557,7 @@ describe("model-based semantic candidates", () => {
     ].join("\n"));
 
     expect(queries).toHaveLength(3);
+    expect(queries[1]).toContain("observed failure");
     expect(queries[2]).toContain("String value");
     expect(queries[2]).toContain("UnsupportedOperationException");
     expect(queries[2]).toContain("TextBlockLiteralExpr");

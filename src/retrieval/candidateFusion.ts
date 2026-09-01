@@ -595,7 +595,6 @@ export function rankEvidenceBackedGraphCandidates(input: {
     if (!seedRank || !neighbor || seedPath === neighborPath || neighbor.indexTier === "tier0") return;
     const independentEvidence = evidenceRanks.get(neighborPath);
     const isModelCorroboratedReverseImporter = (
-      probeSeedSet.has(seedPath) &&
       edge.type === "imports" &&
       direction === "reverse" &&
       (independentEvidence?.has("semantic") ?? false)
