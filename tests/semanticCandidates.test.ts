@@ -1965,7 +1965,7 @@ describe("model-based semantic candidates", () => {
     }
   });
 
-  it("caps symbol documents at one quarter of production file documents", () => {
+  it("gives broad behavioral-symbol coverage before enriching any file twice", () => {
     const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-symbol-budget-"));
     try {
       const largePath = "src/large-parser.ts";
@@ -2023,16 +2023,17 @@ describe("model-based semantic candidates", () => {
         maxDocuments: files.length + 12
       });
       const symbolDocuments = documents.filter((document) => document.kind === "symbol");
-      expect(symbolDocuments).toHaveLength(Math.ceil(files.length * 0.25));
-      expect(documents.length).toBeLessThanOrEqual(
-        files.length + Math.ceil(files.length * 0.25)
+      expect(symbolDocuments).toHaveLength(files.length);
+      expect(new Set(symbolDocuments.map((document) => document.filePath))).toEqual(
+        new Set(files.map((record) => record.path))
       );
+      expect(documents).toHaveLength(files.length * 2);
     } finally {
       fs.rmSync(rootPath, { recursive: true, force: true });
     }
   });
 
-  it("keeps very large repository coverage file-level without extra symbol inference", () => {
+  it("keeps very large repository file and behavioral coverage within the global cap", () => {
     const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-very-large-"));
     try {
       const files = Array.from({ length: 2_001 }, (_, index) => {
@@ -2071,8 +2072,9 @@ describe("model-based semantic candidates", () => {
         graph,
         maxDocuments: 7_500
       });
-      expect(documents).toHaveLength(files.length);
-      expect(documents.every((document) => document.kind === "file")).toBe(true);
+      expect(documents).toHaveLength(files.length * 2);
+      expect(documents.filter((document) => document.kind === "file")).toHaveLength(files.length);
+      expect(documents.filter((document) => document.kind === "symbol")).toHaveLength(files.length);
       expect(new Set(documents.map((document) => document.filePath)).size).toBe(files.length);
     } finally {
       fs.rmSync(rootPath, { recursive: true, force: true });

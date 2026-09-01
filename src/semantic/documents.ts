@@ -21,8 +21,7 @@ const MIN_SOURCE_BODY_CHARS = 112;
 const MAX_FILE_SYMBOLS = 12;
 const MAX_DIRECT_IMPORTS = 4;
 const MAX_DOCUMENTATION_SNIPPETS = 3;
-const LARGE_REPOSITORY_SYMBOL_FRACTION = 0.25;
-const VERY_LARGE_REPOSITORY_FILE_THRESHOLD = 2_000;
+const MAX_SYMBOL_DOCUMENTS_PER_FILE = 1;
 
 export function buildSemanticDocuments(input: {
   rootPath: string;
@@ -59,16 +58,15 @@ export function buildSemanticDocuments(input: {
   }
 
   const selected = [...fileDocuments];
-  // Production file-level coverage is mandatory. Symbol bodies are optional
-  // enrichment and may use at most one quarter as many documents as files,
-  // while always remaining inside the configured document budget.
+  // Production file-level coverage is mandatory. Use the remaining bounded
+  // budget to represent one behavioral body from as many files as possible
+  // before spending a second slot anywhere. The previous symbol-count-
+  // weighted policy repeatedly enriched complex files while leaving ordinary
+  // implementation files with only a very small file-level synopsis.
   const remainingDocumentBudget = Math.max(0, input.maxDocuments - selected.length);
-  const symbolFraction = selected.length > VERY_LARGE_REPOSITORY_FILE_THRESHOLD
-    ? 0
-    : LARGE_REPOSITORY_SYMBOL_FRACTION;
   const symbolBudget = Math.min(
     remainingDocumentBudget,
-    Math.ceil(selected.length * symbolFraction)
+    selected.length * MAX_SYMBOL_DOCUMENTS_PER_FILE
   );
   if (symbolBudget > 0) {
     selected.push(...allocateSymbolDocuments(symbolQueues, symbolBudget));
@@ -406,35 +404,16 @@ function allocateSymbolDocuments(
     .filter(([, documents]) => documents.length > 0)
     .map(([filePath, documents]) => ({
       filePath,
-      documents,
-      weight: Math.sqrt(documents.length),
-      allocation: 0
+      documents
     }))
     .sort((left, right) => left.filePath.localeCompare(right.filePath));
-  const capacity = entries.reduce((sum, entry) => sum + entry.documents.length, 0);
-  let remaining = Math.min(Math.max(0, Math.floor(budget)), capacity);
+  const coverageBudget = Math.min(Math.max(0, Math.floor(budget)), entries.length);
 
-  while (remaining > 0) {
-    let selected: (typeof entries)[number] | undefined;
-    let selectedPriority = Number.NEGATIVE_INFINITY;
-    for (const entry of entries) {
-      if (entry.allocation >= entry.documents.length) continue;
-      const priority = entry.weight / (entry.allocation + 1);
-      if (
-        priority > selectedPriority ||
-        (priority === selectedPriority && entry.filePath.localeCompare(selected?.filePath ?? "") < 0)
-      ) {
-        selected = entry;
-        selectedPriority = priority;
-      }
-    }
-    if (!selected) break;
-    selected.allocation += 1;
-    remaining -= 1;
-  }
-
-  return entries.flatMap((entry) =>
-    selectBehavioralSymbolDocuments(entry.documents, entry.allocation)
+  // Maximize repository coverage first. When the configured global cap cannot
+  // fit every file, sample the stable path-ordered inventory rather than
+  // favoring filenames or repositories with more declarations.
+  return evenlySampleIncludingEndpoints(entries, coverageBudget).flatMap((entry) =>
+    selectBehavioralSymbolDocuments(entry.documents, 1)
       .map((candidate) => candidate.document)
   );
 }
