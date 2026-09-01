@@ -39,6 +39,8 @@ const MAX_FENCED_QUERY_CANDIDATES = 12;
 const SEMANTIC_QUERY_WINDOW_CHARS = 560;
 const SEMANTIC_QUERY_WINDOW_OVERLAP_CHARS = 80;
 const SEMANTIC_DIAGNOSTIC_RANK_LIMIT = 512;
+const SEMANTIC_SYNOPSIS_HEADLINE_CHARS = 320;
+const SEMANTIC_SYNOPSIS_NARRATIVE_CHARS = 620;
 const SEMANTIC_EVIDENCE_ENDPOINT_CHARS = 720;
 const MAX_SEMANTIC_CONSENSUS_RESERVE = 16;
 
@@ -213,11 +215,11 @@ export function buildSemanticQueries(query: string): string[] {
 /**
  * Serving uses at most three compact model queries so a broad issue template
  * cannot gain extra retrieval votes merely because it contains more sections.
- * Keep the task headline and narrative windows independent: concatenating
- * unrelated issue sections can dilute the one behavioral description that
- * matches the implementation. Prefer the final narrative endpoint, then the
- * first, while retaining one bounded fenced-evidence view when present. The
- * embedding model—not task words or filenames—decides relevance.
+ * The independent structural headline preserves concise task intent while a
+ * bounded synopsis lets the model relate behavior described across multiple
+ * issue sections. A separate fenced-evidence view preserves precise
+ * diagnostics and reproductions. The embedding model—not task words or
+ * filenames—decides relevance.
  *
  * The broader candidate/view builder remains available for offline diagnostics
  * and model-selection analysis.
@@ -225,8 +227,19 @@ export function buildSemanticQueries(query: string): string[] {
 export function buildSemanticServingQueries(query: string): string[] {
   const candidates = buildSemanticQueryCandidates(query);
   const headline = candidates.find((candidate) => candidate.kind === "headline");
-  const narratives = candidates.filter((candidate) => candidate.kind === "narrative");
+  const narratives = candidates
+    .filter((candidate) => candidate.kind === "narrative")
+    .slice(-2);
   const fences = candidates.filter((candidate) => candidate.kind === "fence");
+  const parts = [...new Set(
+    [
+      headline?.text.slice(0, SEMANTIC_SYNOPSIS_HEADLINE_CHARS).trim(),
+      ...narratives.map((narrative) =>
+        narrative.text.slice(0, SEMANTIC_SYNOPSIS_NARRATIVE_CHARS).trim()
+      )
+    ].filter((value): value is string => Boolean(value))
+  )];
+  const synopsis = normalizeSemanticQuery(parts.join("\n\n")).slice(0, MAX_QUERY_CHARS).trim();
   const evidenceParts = evenlySampleIncludingEndpoints(
     fences,
     Math.min(2, fences.length)
@@ -236,15 +249,8 @@ export function buildSemanticServingQueries(query: string): string[] {
   const evidenceSynopsis = normalizeSemanticQuery(
     [...new Set(evidenceParts)].join("\n\n")
   ).slice(0, MAX_QUERY_CHARS).trim();
-  const narrativeCapacity = evidenceSynopsis ? 1 : 2;
-  const selectedNarratives = uniqueIndexes([
-    ...narratives.slice(-1).map((candidate) => candidates.indexOf(candidate)),
-    ...narratives.slice(0, 1).map((candidate) => candidates.indexOf(candidate))
-  ])
-    .slice(0, narrativeCapacity)
-    .map((index) => candidates[index]!.text);
   return [...new Set(
-    [headline?.text, ...selectedNarratives, evidenceSynopsis]
+    [headline?.text, synopsis, evidenceSynopsis]
       .filter((value): value is string => Boolean(value))
   )].slice(0, 3);
 }

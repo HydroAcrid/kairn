@@ -1569,7 +1569,7 @@ describe("model-based semantic candidates", () => {
     expect(queries.some((query) => query.includes("invalid credential"))).toBe(true);
   });
 
-  it("serves independent headline and narrative endpoints without semantic dilution", () => {
+  it("serves a bounded behavioral synopsis without multiplying issue-section votes", () => {
     const queries = buildSemanticServingQueries([
       "Authorization cleanup leaves stale records.",
       "",
@@ -1580,12 +1580,10 @@ describe("model-based semantic candidates", () => {
       `The final adapter should report the invalid credential consistently. ${"late context ".repeat(25)}`
     ].join("\n"));
 
-    expect(queries).toHaveLength(3);
+    expect(queries).toHaveLength(2);
     expect(queries[0]).toContain("Authorization cleanup leaves stale records");
     expect(queries[1]).toContain("invalid credential");
-    expect(queries[1]).not.toContain("associated lease");
-    expect(queries[2]).toContain("expired session state");
-    expect(queries[2]).not.toContain("invalid credential");
+    expect(queries[1]).toContain("expired session state");
     expect(queries.every((query) => query.length <= 1_600)).toBe(true);
   });
 
