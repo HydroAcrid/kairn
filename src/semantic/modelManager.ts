@@ -71,17 +71,20 @@ export function getSemanticModelState(input?: {
         `Installed model is incompatible: id ${receipt.manifest.modelId} does not match requested model ${requestedModelId}.`
       );
     }
+    let pinnedManifest: SemanticModelManifest;
     let pinnedManifestSha256: string;
     try {
-      pinnedManifestSha256 = semanticModelManifestSha256(
-        getSemanticModelManifest(receipt.manifest.modelId)
-      );
+      pinnedManifest = getSemanticModelManifest(receipt.manifest.modelId);
+      pinnedManifestSha256 = semanticModelManifestSha256(pinnedManifest);
     } catch {
       throw new Error(
         `Installed model ${receipt.manifest.modelId} is incompatible with this Kairn release.`
       );
     }
-    if (receipt.manifestSha256 !== pinnedManifestSha256) {
+    if (
+      receipt.manifestSha256 !== pinnedManifestSha256 &&
+      !hasSameSemanticModelArtifact(receipt.manifest, pinnedManifest)
+    ) {
       throw new Error(
         `Installed model ${receipt.manifest.modelId} is incompatible with Kairn's pinned artifact manifest.`
       );
