@@ -2147,6 +2147,62 @@ describe("model-based semantic candidates", () => {
     }
   });
 
+  it("preserves outer behavioral declarations instead of nested callback noise", () => {
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-outer-symbols-"));
+    try {
+      const filePath = "src/visitor.ts";
+      fs.mkdirSync(path.join(rootPath, "src"), { recursive: true });
+      fs.writeFileSync(path.join(rootPath, filePath), [
+        "function transformProgram() {",
+        "  return {",
+        "    ImportDeclaration() {},",
+        "    ExportDeclaration() {}",
+        "  };",
+        "}",
+        "function applyTransformation() {}"
+      ].join("\n"));
+      const symbols = [
+        { name: "transformProgram", startLine: 1, endLine: 6 },
+        { name: "ImportDeclaration", startLine: 3, endLine: 3 },
+        { name: "ExportDeclaration", startLine: 4, endLine: 4 },
+        { name: "applyTransformation", startLine: 7, endLine: 7 }
+      ].map((symbol) => ({
+        rootPath,
+        filePath,
+        name: symbol.name,
+        kind: "function" as const,
+        exported: false,
+        startLine: symbol.startLine,
+        endLine: symbol.endLine,
+        signature: `function ${symbol.name}()`
+      }));
+      const graph: RepoGraph = {
+        rootPath,
+        files: [file(rootPath, filePath)],
+        parsedFiles: [{
+          rootPath,
+          filePath,
+          language: "typescript",
+          imports: [],
+          hasErrors: false,
+          symbols
+        }],
+        symbols,
+        edges: []
+      };
+
+      const documents = buildSemanticDocuments({ rootPath, graph, maxDocuments: 4 });
+      const fileDocument = documents.find((document) => document.kind === "file")!;
+      expect(fileDocument.text).toContain("transformProgram");
+      expect(fileDocument.text).toContain("applyTransformation");
+      expect(fileDocument.text).not.toContain("declared symbols: ImportDeclaration");
+      expect(documents.filter((document) => document.kind === "symbol").map((document) => document.symbol))
+        .not.toContain("ImportDeclaration");
+    } finally {
+      fs.rmSync(rootPath, { recursive: true, force: true });
+    }
+  });
+
   it("keeps complete production file coverage without exceeding the nominal budget with symbols", () => {
     const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-large-repo-budget-"));
     try {

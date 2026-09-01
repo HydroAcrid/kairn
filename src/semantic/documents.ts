@@ -12,7 +12,7 @@ import { readTextFile } from "../retrieval/readSource.js";
 import { sha256 } from "../utils/hash.js";
 import { estimateTokens } from "../utils/tokens.js";
 
-export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v7" as const;
+export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v8" as const;
 // Keep structured metadata plus representative source within a compact CPU
 // inference window. The model still receives multiple regions from large
 // files, while cold indexing cost remains proportional to useful evidence.
@@ -206,9 +206,22 @@ function groupSymbols(symbols: SymbolRecord[]): Map<string, SymbolRecord[]> {
 }
 
 function semanticBehaviorSymbols(symbols: SymbolRecord[]): SymbolRecord[] {
-  return symbols.filter((symbol) =>
+  const behavioral = symbols.filter((symbol) =>
     symbol.exported ||
     ["function", "class", "interface", "type", "component", "default"].includes(symbol.kind)
+  );
+  return behavioral.filter((symbol) =>
+    symbol.exported ||
+    !behavioral.some((parent) =>
+      parent !== symbol &&
+      parent.filePath === symbol.filePath &&
+      parent.startLine <= symbol.startLine &&
+      parent.endLine >= symbol.endLine &&
+      (
+        parent.startLine < symbol.startLine ||
+        parent.endLine > symbol.endLine
+      )
+    )
   );
 }
 

@@ -182,7 +182,7 @@ describe("public evidence ranker training", () => {
         documentId: "sdoc_test",
         documentHash: "content-hash",
         modelId: "pinned-model",
-        schemaVersion: "semantic-documents-v7",
+        schemaVersion: "semantic-documents-v8",
         dimensions: 3,
         vector: new Int8Array([127, 0, -127]),
         scale: 0.005
@@ -199,7 +199,7 @@ describe("public evidence ranker training", () => {
         documentId: "sdoc_second",
         documentHash: "second-content-hash",
         modelId: "pinned-model",
-        schemaVersion: "semantic-documents-v7",
+        schemaVersion: "semantic-documents-v8",
         dimensions: 3,
         vector: new Int8Array([0, 127, 0]),
         scale: 0.005
@@ -261,7 +261,7 @@ describe("public evidence ranker training", () => {
           documentId,
           documentHash,
           modelId: "pinned-model",
-          schemaVersion: "semantic-documents-v7",
+          schemaVersion: "semantic-documents-v8",
           dimensions: 3,
           vector: new Int8Array([127, 0, -127]),
           scale: 0.005
@@ -333,7 +333,7 @@ describe("public evidence ranker training", () => {
       repositoryLineageId: "https://github.com/example/project",
       repositoryRef: "1".repeat(40),
       modelManifestSha256: "a".repeat(64),
-      documentSchemaVersion: "semantic-documents-v7",
+      documentSchemaVersion: "semantic-documents-v8",
       candidateGeneratorMode: "semantic" as const,
       implementationSha256: "b".repeat(64)
     };
@@ -463,7 +463,7 @@ describe("public evidence ranker training", () => {
       repositoryLineageId: "https://github.com/example/project",
       modelId: "pinned-model",
       documentEmbeddingManifestSha256: "a".repeat(64),
-      documentSchemaVersion: "semantic-documents-v7" as const
+      documentSchemaVersion: "semantic-documents-v8" as const
     };
     const first = buildSemanticLineageCacheKey(base);
     expect(buildSemanticLineageCacheKey({ ...base })).toBe(first);
@@ -493,7 +493,7 @@ describe("public evidence ranker training", () => {
           documentId: "sdoc_shared",
           documentHash,
           modelId: "pinned-model",
-          schemaVersion: "semantic-documents-v7",
+          schemaVersion: "semantic-documents-v8",
           dimensions: 3,
           vector: new Int8Array([value, 0, -value]),
           scale: 0.005
