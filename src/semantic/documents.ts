@@ -59,8 +59,11 @@ export function buildSemanticDocuments(input: {
   }
 
   const selected = [...fileDocuments];
-  // Production file-level coverage is mandatory. Use the remaining bounded
-  // budget to represent one behavioral body from as many files as possible
+  // Source and test file-level coverage is mandatory. Tests often contain the
+  // behavioral vocabulary that links a natural-language failure to its
+  // production implementation through precise parser-observed call/test
+  // edges. Use the remaining bounded budget to represent one behavioral body
+  // from as many files as possible
   // before spending a second slot anywhere. The previous symbol-count-
   // weighted policy repeatedly enriched complex files while leaving ordinary
   // implementation files with only a very small file-level synopsis.
@@ -187,7 +190,7 @@ function stableEligibleFiles(files: FileRecord[]): FileRecord[] {
   return files
     .filter((file) =>
       file.indexTier !== "tier0" &&
-      ["source", "route", "component", "schema", "config"].includes(file.kind)
+      ["source", "test", "route", "component", "schema", "config"].includes(file.kind)
     )
     .sort((left, right) => left.path.localeCompare(right.path));
 }

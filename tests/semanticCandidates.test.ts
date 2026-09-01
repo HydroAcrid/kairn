@@ -2367,7 +2367,7 @@ describe("model-based semantic candidates", () => {
     }
   });
 
-  it("keeps tests in structural retrieval without duplicating them in the global semantic index", () => {
+  it("embeds tests for model-backed source rescue while excluding generated files", () => {
     const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-production-only-"));
     try {
       const sourcePath = "src/session.ts";
@@ -2381,18 +2381,24 @@ describe("model-based semantic candidates", () => {
       }
       const sourceFile = file(rootPath, sourcePath);
       const testFile = { ...file(rootPath, testPath), kind: "test" as const };
+      const generatedPath = "vendor/generated.ts";
+      fs.mkdirSync(path.join(rootPath, "vendor"), { recursive: true });
+      fs.writeFileSync(path.join(rootPath, generatedPath), "export const generated = true;\n");
+      const generatedFile = file(rootPath, generatedPath, "tier0");
       const graph: RepoGraph = {
         rootPath,
-        files: [sourceFile, testFile],
+        files: [sourceFile, testFile, generatedFile],
         parsedFiles: [],
         symbols: [],
         edges: []
       };
 
       const documents = buildSemanticDocuments({ rootPath, graph, maxDocuments: 20 });
-      expect(documents).toEqual([
-        expect.objectContaining({ filePath: sourcePath, kind: "file" })
-      ]);
+      expect(documents).toEqual(expect.arrayContaining([
+        expect.objectContaining({ filePath: sourcePath, kind: "file" }),
+        expect.objectContaining({ filePath: testPath, kind: "file" })
+      ]));
+      expect(documents.some((document) => document.filePath === generatedPath)).toBe(false);
     } finally {
       fs.rmSync(rootPath, { recursive: true, force: true });
     }
