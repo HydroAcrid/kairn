@@ -13,7 +13,8 @@ import {
   DEFAULT_ENRICHED_CANDIDATE_LIMIT,
   DEFAULT_INITIAL_CANDIDATE_LIMIT,
   extractEvidenceTaskSignals,
-  isProductionEvidenceFile
+  isProductionEvidenceFile,
+  isTestEvidenceFile
 } from "./evidenceSignals.js";
 import {
   fuseSemanticCandidateRankings,
@@ -158,8 +159,15 @@ export function buildModelCandidateUnion(input: {
         MODEL_RETRIEVAL_PROBE_LIMIT * 8
       )
     : prioritizeRetrievalPathsForIntent(uniquePaths(
-        input.semanticEvidencePaths ?? semanticPaths
+      input.semanticEvidencePaths ?? semanticPaths
       ).filter(eligibleNonHard), signals.intent, filesByPath);
+  // Role policy keeps tests out of source delivery, but graph-only probes must
+  // retain their raw model ordering. Otherwise a behaviorally exact test can
+  // be shifted behind every production file before a precise parser-observed
+  // test/call edge gets a chance to recover the implementation.
+  const graphSemanticEvidencePaths = uniquePaths(
+    input.semanticEvidencePaths ?? semanticEvidencePaths
+  ).filter((filePath) => eligibleNonHard(filePath) && filesByPath.has(filePath));
   const bm25Paths = [...input.bm25Results]
     .filter((result) => result.bm25Score > 0)
     .sort((left, right) => right.bm25Score - left.bm25Score || left.path.localeCompare(right.path))
@@ -208,10 +216,10 @@ export function buildModelCandidateUnion(input: {
     .slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
   const graphProbePaths = signals.intent === "source"
     ? uniquePaths([
-        ...semanticEvidencePaths
+        ...graphSemanticEvidencePaths
           .filter((filePath) =>
             !preliminaryGraphSeedPaths.includes(filePath) &&
-            filesByPath.get(filePath)?.kind === "test"
+            isTestEvidenceFile(filesByPath.get(filePath)!)
           )
           .slice(0, MAX_TEST_GRAPH_PROBE_PATHS),
         ...semanticEvidencePaths
@@ -229,7 +237,7 @@ export function buildModelCandidateUnion(input: {
     : [];
   const graphSeedPaths = uniquePaths([...preliminaryGraphSeedPaths, ...graphProbePaths]);
   const semanticEvidenceRanks = new Map(
-    semanticEvidencePaths.map((filePath, index) => [filePath, index + 1])
+    graphSemanticEvidencePaths.map((filePath, index) => [filePath, index + 1])
   );
   // Probe selection is role-balanced so semantically relevant tests retain a
   // chance to rescue their production companions. That coverage policy must

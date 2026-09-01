@@ -823,6 +823,38 @@ describe("model-based semantic candidates", () => {
     ]));
   });
 
+  it("preserves raw model rank for path-classified test probes without delivering the test", () => {
+    const rootPath = "/repo";
+    // Some JavaScript suites use test/foo.js, which is objectively a test even
+    // when the coarse scanner kind remains source.
+    const testProbe = file(rootPath, "test/account.js");
+    const implementation = file(rootPath, "src/account/delete.js");
+    const production = Array.from({ length: 80 }, (_, index) =>
+      file(rootPath, `src/noise-${String(index).padStart(2, "0")}.js`)
+    );
+    const rawRanking = [testProbe, ...production].map((candidate, index) => ({
+      path: candidate.path,
+      similarity: 1 - index / 1_000,
+      documentIds: [`semantic-${index}`]
+    }));
+    const result = buildModelCandidateUnion({
+      files: [testProbe, implementation, ...production],
+      query: "Repair the production account cleanup behavior.",
+      symbols: [],
+      bm25Results: [],
+      semanticHits: rawRanking,
+      semanticQueryRankings: [rawRanking],
+      semanticEvidencePaths: rawRanking.map((hit) => hit.path),
+      semanticStatus: readyStatus(rawRanking.length),
+      edges: [edge(rootPath, testProbe.path, implementation.path, "call")]
+    });
+
+    expect(result.initialPaths).not.toContain(testProbe.path);
+    expect(result.graphSeedPaths).toContain(testProbe.path);
+    expect(result.graphSeedRanks.get(testProbe.path)).toBe(1);
+    expect(result.enrichedPaths).toContain(implementation.path);
+  });
+
   it("uses model-backed production probes only through precise parser relationships", () => {
     const rootPath = "/repo";
     const leaders = Array.from({ length: 64 }, (_, index) =>

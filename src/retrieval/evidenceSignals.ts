@@ -305,7 +305,7 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
     if (!file || (result.bm25Score <= 0 && result.keywordScore <= 0 && result.semanticScore <= 0.03)) continue;
     if (isProductionEvidenceFile(file)) addSignal(file.path, "production_source");
     if (roleMatchesIntent(file, signals.intent)) addSignal(file.path, "role_match");
-    if (signals.intent === "test" && isTestFile(file)) addSignal(file.path, "test_requested");
+    if (signals.intent === "test" && isTestEvidenceFile(file)) addSignal(file.path, "test_requested");
   }
   for (const filePath of [...changedFiles].sort()) addSignal(filePath, "git_diff");
   for (const filePath of [...shownFiles].sort()) addSignal(filePath, "already_delivered");
@@ -646,7 +646,7 @@ function buildFeatureVector(input: {
     graphIndependentEvidence: clamp01(input.graphEvidence?.independentEvidence ?? 0),
     sourceTestPair: binary(input.reasons.has("source_test_pair")),
     productionSource: binary(isProductionEvidenceFile(input.file)),
-    testFile: binary(isTestFile(input.file)),
+    testFile: binary(isTestEvidenceFile(input.file)),
     docsFile: binary(isDocsFile(input.file)),
     generatedVendor: binary(isGeneratedOrVendor(input.file.path)),
     intentRoleMatch: binary(roleMatchesIntent(input.file, input.signals.intent)),
@@ -686,7 +686,7 @@ function addDerivedReasons(
   if ((legacy?.semanticScore ?? 0) > 0.03) reasons.add("semantic");
   if (isProductionEvidenceFile(file)) reasons.add("production_source");
   if (isGeneratedOrVendor(file.path)) reasons.add("generated_vendor");
-  if (signals.intent === "test" && isTestFile(file)) reasons.add("test_requested");
+  if (signals.intent === "test" && isTestEvidenceFile(file)) reasons.add("test_requested");
   if (roleMatchesIntent(file, signals.intent)) reasons.add("role_match");
   if (file.size >= 64 * 1024) reasons.add("content_cost");
 
@@ -1079,10 +1079,10 @@ function stableFiles(files: FileRecord[]): FileRecord[] {
 }
 
 export function isProductionEvidenceFile(file: FileRecord): boolean {
-  return ["source", "route", "component", "schema"].includes(file.kind) && !isTestFile(file) && !isDocsFile(file) && !isGeneratedOrVendor(file.path);
+  return ["source", "route", "component", "schema"].includes(file.kind) && !isTestEvidenceFile(file) && !isDocsFile(file) && !isGeneratedOrVendor(file.path);
 }
 
-function isTestFile(file: FileRecord): boolean {
+export function isTestEvidenceFile(file: FileRecord): boolean {
   return file.kind === "test" || /(^|\/)(tests?|specs?|__tests__)(\/|$)|(?:^|[._-])(test|spec)(?:[._-]|$)|_test\.go$/i.test(file.path);
 }
 
@@ -1096,13 +1096,13 @@ function isGeneratedOrVendor(filePath: string): boolean {
 
 function roleMatchesIntent(file: FileRecord, intent: EvidenceTaskIntent): boolean {
   if (intent === "source") return isProductionEvidenceFile(file);
-  if (intent === "test") return isTestFile(file);
+  if (intent === "test") return isTestEvidenceFile(file);
   if (intent === "docs") return isDocsFile(file);
   return isProductionEvidenceFile(file);
 }
 
 function roleReason(file: FileRecord, intent: EvidenceTaskIntent): EvidenceReason {
-  if (intent === "test" && isTestFile(file)) return "test_requested";
+  if (intent === "test" && isTestEvidenceFile(file)) return "test_requested";
   if (roleMatchesIntent(file, intent)) return "role_match";
   return isProductionEvidenceFile(file) ? "production_source" : "content_cost";
 }
