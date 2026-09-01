@@ -374,7 +374,8 @@ describe("model-based semantic candidates", () => {
     expect(result.semanticEvidencePaths).toContain(evidenceSeed.path);
     expect(result.graphSeedPaths).toContain(evidenceSeed.path);
     expect(result.graphPaths).toContain(implementation.path);
-    expect(result.initialPaths).toContain(implementation.path);
+    expect(result.initialPaths).not.toContain(implementation.path);
+    expect(result.enrichedPaths).toContain(implementation.path);
   });
 
   it("can promote a graph-only model probe that was not delivered as a primary seed", () => {
@@ -416,7 +417,8 @@ describe("model-based semantic candidates", () => {
     expect(result.semanticPaths).not.toContain(graphOnlyProbe.path);
     expect(result.graphSeedPaths).toContain(graphOnlyProbe.path);
     expect(result.graphPaths).toContain(graphOnlyProbe.path);
-    expect(result.initialPaths).toContain(graphOnlyProbe.path);
+    expect(result.initialPaths).not.toContain(graphOnlyProbe.path);
+    expect(result.enrichedPaths).toContain(graphOnlyProbe.path);
   });
 
   it("lets a model probe recover a semantically corroborated direct importer", () => {
@@ -539,7 +541,7 @@ describe("model-based semantic candidates", () => {
 
     expect(result.graphPaths.indexOf(importer.path)).toBeGreaterThanOrEqual(64);
     expect(result.graphImporterPaths).not.toContain(importer.path);
-    expect(result.enrichedPaths).toContain(importer.path);
+    expect(result.enrichedPaths).not.toContain(importer.path);
   });
 
   it("preserves the bounded model-evidence tail when independent lexical results compete", () => {
@@ -568,8 +570,8 @@ describe("model-based semantic candidates", () => {
       edges: []
     });
 
-    expect(result.initialPaths).toContain(semanticFiles[47]!.path);
-    expect(result.initialPaths).not.toContain(semanticFiles[48]!.path);
+    expect(result.initialPaths).toContain(semanticFiles[55]!.path);
+    expect(result.initialPaths).not.toContain(semanticFiles[56]!.path);
     expect(result.initialPaths).toContain(lexicalFiles[0]!.path);
     expect(result.initialPaths).toHaveLength(64);
   });
@@ -619,7 +621,7 @@ describe("model-based semantic candidates", () => {
     });
 
     expect(result.initialPaths).toContain(lexicalFiles[0]!.path);
-    expect(result.initialPaths).toContain(semanticFiles[47]!.path);
+    expect(result.initialPaths).toContain(semanticFiles[55]!.path);
     expect(result.initialPaths).toHaveLength(64);
   });
 
@@ -686,7 +688,7 @@ describe("model-based semantic candidates", () => {
       });
   });
 
-  it("reserves initial capacity for a model-validated direct graph neighbor", () => {
+  it("reserves enrichment capacity for a model-validated direct graph neighbor", () => {
     const rootPath = "/repo";
     const seed = file(rootPath, "src/public-api.ts");
     const implementation = file(rootPath, "src/internal/implementation.ts");
@@ -717,7 +719,7 @@ describe("model-based semantic candidates", () => {
     });
 
     expect(result.initialPaths).toHaveLength(64);
-    expect(result.initialPaths).toContain(implementation.path);
+    expect(result.initialPaths).not.toContain(implementation.path);
     expect(result.enrichedPaths).toContain(implementation.path);
     expect(result.enrichedPaths).not.toContain(unrelated.path);
   });
@@ -962,7 +964,8 @@ describe("model-based semantic candidates", () => {
       ]
     });
 
-    expect(result.initialPaths).toContain(productionProbe.path);
+    expect(result.initialPaths).not.toContain(productionProbe.path);
+    expect(result.enrichedPaths).toContain(productionProbe.path);
     expect(result.graphSeedPaths).toContain(productionProbe.path);
     expect(result.graphSeedPaths).not.toContain(lexicalOnly.path);
     expect(result.graphSeedPaths).toContain(viewSpecificProbe.path);
@@ -1024,7 +1027,8 @@ describe("model-based semantic candidates", () => {
     );
     expect(result.graphSeedRanks.get(productionProbe.path)).toBe(50);
     expect(result.graphPaths[0]).toBe(target.path);
-    expect(result.initialPaths).toContain(target.path);
+    expect(result.initialPaths).not.toContain(target.path);
+    expect(result.enrichedPaths).toContain(target.path);
   });
 
   it("spends source-intent graph enrichment capacity on production before companions", () => {
@@ -1538,7 +1542,7 @@ describe("model-based semantic candidates", () => {
     expect(result.enrichedPaths).toContain("src/module-99.ts");
   });
 
-  it("balances the initial retrieval lane with bounded direct graph evidence", () => {
+  it("keeps direct graph evidence in the bounded enrichment lane", () => {
     const rootPath = "/repo";
     const retrieved = Array.from({ length: 80 }, (_, index) =>
       file(rootPath, `src/retrieved-${String(index).padStart(2, "0")}.ts`)
@@ -1563,9 +1567,9 @@ describe("model-based semantic candidates", () => {
     });
 
     expect(result.initialPaths).toHaveLength(64);
-    expect(result.initialPaths).toContain("src/retrieved-39.ts");
-    expect(result.initialPaths).toContain("src/neighbor-00.ts");
-    expect(result.initialPaths).not.toContain("src/retrieved-63.ts");
+    expect(result.initialPaths).toContain("src/retrieved-55.ts");
+    expect(result.initialPaths).not.toContain("src/neighbor-00.ts");
+    expect(result.initialPaths).toContain("src/retrieved-63.ts");
     expect(result.enrichedPaths.some((filePath) => filePath.includes("/neighbor-"))).toBe(true);
   });
 

@@ -68,14 +68,14 @@ const PRIMARY_SEMANTIC_QUERY_VIEW_LIMIT = 2;
 const MODEL_GRAPH_SEED_SEMANTIC_RESERVE = Math.floor(
   DEFAULT_INITIAL_CANDIDATE_LIMIT * 7 / 8
 );
-const MODEL_INITIAL_SEMANTIC_RESERVE = 48;
-const MODEL_INITIAL_BM25_RESERVE = 8;
+const MODEL_INITIAL_SEMANTIC_RESERVE = 56;
+const MODEL_INITIAL_BM25_RESERVE = 4;
 const MODEL_INITIAL_SYMBOL_RESERVE = 4;
-const MODEL_INITIAL_GRAPH_RESERVE = 16;
 const MAX_TEST_GRAPH_PROBE_PATHS = 192;
 const GRAPH_ENRICHMENT_CAPACITY =
   DEFAULT_ENRICHED_CANDIDATE_LIMIT - DEFAULT_INITIAL_CANDIDATE_LIMIT;
 const GRAPH_PRECISION_RESERVE = Math.floor(GRAPH_ENRICHMENT_CAPACITY * 3 / 8);
+const GRAPH_CORE_CAPACITY = Math.floor(GRAPH_ENRICHMENT_CAPACITY * 3 / 4);
 const MAX_GRAPH_CONSENSUS_SUPPORT_SEEDS = 3;
 
 export function buildModelCandidateUnion(input: {
@@ -300,18 +300,18 @@ export function buildModelCandidateUnion(input: {
     signals.intent,
     filesByPath
   );
-  // Candidate recall needs independent lanes to survive before the calibrated
-  // ranker sees the first 64 files. A model-only reserve can crowd out exact
-  // symbols and parser-proven direct neighbors, while an unconstrained graph
-  // lane can replace the model evidence that made those neighbors meaningful.
-  // Keep small, fixed maxima for semantic, symbol, and one-hop graph evidence,
-  // then let RRF and the prior preliminary union fill every unused slot.
+  // Candidate recall needs independent retrieval lanes to survive before the
+  // calibrated ranker sees the first 64 files. Preserve most of that bound for
+  // the local relevance model while retaining small lexical and exact-symbol
+  // reserves. Graph evidence belongs to the separate 64-file enrichment half:
+  // admitting it here can evict the model evidence that made a neighbor
+  // meaningful and makes the public 64/128 stages difficult to interpret.
+  // RRF and the preliminary union fill only capacity left by sparse lanes.
   const initialPaths = uniquePaths([
     ...hardPaths,
     ...semanticPaths.slice(0, MODEL_INITIAL_SEMANTIC_RESERVE),
     ...bm25Paths.slice(0, MODEL_INITIAL_BM25_RESERVE),
     ...eligibleSymbolPaths.slice(0, MODEL_INITIAL_SYMBOL_RESERVE),
-    ...graphPaths.slice(0, MODEL_INITIAL_GRAPH_RESERVE),
     ...fusedRetrievalOrder,
     ...preliminaryUnion
   ])
@@ -347,22 +347,24 @@ export function buildModelCandidateUnion(input: {
     limit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
   }).filter((filePath) => filesByPath.has(filePath));
   // Keep a bounded precision core so weighting consensus cannot displace
-  // direct parser relationships. Fill the remaining enrichment capacity with
-  // RRF agreement, giving multi-seed graph consensus two votes over the
-  // single-seed lane. This makes candidate coverage stable under small model
-  // rank drift without enlarging the 128-file public bound.
+  // direct parser relationships. Reserve the final quarter of enrichment for
+  // diverse consensus, importer, and fused graph evidence instead of letting
+  // one broad graph order consume all 64 additions. This makes candidate
+  // coverage stable under small model rank drift without enlarging the
+  // 128-file public bound.
   const graphCorePaths = uniquePaths([
     ...graphPaths.slice(0, GRAPH_PRECISION_RESERVE),
     ...graphConsensusWeightedOrder
-  ]).slice(0, GRAPH_ENRICHMENT_CAPACITY);
-  // Preserve the complete parser-precision/consensus core before admitting
-  // the weaker reverse-import relation. The tail is still model-based:
+  ]).slice(0, GRAPH_CORE_CAPACITY);
+  // Preserve the parser-precision/consensus core before admitting weaker
+  // reverse-import and fused graph relations. The tail is still model-based:
   // importer candidates require their own semantic evidence. A two-to-one
   // structural interleave reflects the stronger multi-seed consensus without
   // assigning brittle independent quotas or enlarging the 128-file union.
   const graphTailPaths = weightedInterleavePaths([
     { paths: graphConsensusPaths, weight: 2 },
-    { paths: graphImporterPaths, weight: 1 }
+    { paths: graphImporterPaths, weight: 1 },
+    { paths: graphEnrichedOrder, weight: 1 }
   ], DEFAULT_ENRICHED_CANDIDATE_LIMIT)
     .filter((filePath) => filesByPath.has(filePath));
   // Graph relations enrich the bounded union; they do not get to evict
@@ -374,7 +376,7 @@ export function buildModelCandidateUnion(input: {
   // The calibrated ranker therefore sees the intended 64 initial + up to 64
   // graph-enriched candidates without a second fusion silently dropping a
   // parser-proven neighbor. Fuse precision and consensus inside the complete
-  // enrichment capacity instead of assigning brittle independent quotas.
+  // enrichment capacity instead of assigning path- or task-specific quotas.
   const enrichedPaths = uniquePaths([
     ...initialPaths,
     ...graphCorePaths,
