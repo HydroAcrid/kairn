@@ -271,7 +271,13 @@ async function getOrtRuntime(): Promise<OrtRuntime> {
     ortRuntimePromise = (async () => {
       if (preference !== "wasm") {
         try {
-          const native = await import("onnxruntime-node");
+          const imported = await import("onnxruntime-node");
+          const namespace = imported as unknown as {
+            InferenceSession?: unknown;
+            default?: unknown;
+          };
+          const native = namespace.InferenceSession ? namespace : namespace.default;
+          if (!native) throw new Error("onnxruntime-node has no runtime export.");
           ortRuntimeBackend = "node";
           return native as unknown as OrtRuntime;
         } catch (error) {
