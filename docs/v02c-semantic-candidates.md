@@ -220,6 +220,65 @@ and another ranks 146th. Further work therefore targets general semantic
 candidate recall rather than adding path, filename, or issue-specific ranking
 rules.
 
+## Native Full-Probe Selector Result
+
+Commit `b4ebfb8` rematerialized the complete public train/calibration cohort
+with the native Node ONNX backend and the pinned `jina-code-v2-q8` model:
+
+- 135/135 cases completed: 90 train and 45 calibration;
+- every case reported `semantic / ready / node / jina-code-v2-q8`;
+- all 17 required files in the 10 reviewed required-source cases were present
+  in the 512-file selector probe;
+- the detached holdout remained unopened;
+- retained benchmark cache finished at 7.00 GiB under the 8 GiB limit;
+- semantic query p95 was 192.5 ms; vector-scan p95 was 54.1 ms and therefore
+  still exceeds the 50 ms gate by 4.1 ms.
+
+The manifest SHA-256 is
+`d428ced8af107f9a990ae7d3335442533fd6d12eebf08c869ea75b8d000047c5`.
+The report SHA-256 is
+`ea5affa599eda87ae7b0ab102634831faf0949791cf6ab68675836d74d05a1b6`.
+
+Two evaluation defects were found and fixed before interpreting the result:
+
+1. Fixed-step Platt fitting underfit separable calibration rows. Standard
+   smoothed Platt targets plus a deterministic, line-searched Newton solve
+   reduced ECE from 0.1671 to 0.0228 without changing rank order.
+2. The first semantic-selector report trained on the 512-file probe but scored
+   only the old 128-file pool. The evaluator now scores the complete probe and
+   rejects baseline comparisons unless both manifest and report hashes match.
+
+The valid same-pool pairwise-linear result is:
+
+| Metric | v166 | Native semantic selector | Delta |
+| --- | ---: | ---: | ---: |
+| Calibration Recall@5 (72 files) | 75.00% | 75.00% | 0.00 pp |
+| Calibration MRR | 0.4567 | 0.4698 | +0.0131 |
+| Required-source Recall@64 (17 files) | 70.59% | 70.59% | 0.00 pp |
+| Required-source Recall@128 (17 files) | 88.24% | 94.12% | +5.88 pp |
+| Required-source MRR | 0.1072 | 0.1251 | +0.0179 |
+| ECE | 0.0190 baseline | 0.0228 | passes |
+| Generated/vendor top-one violations | 0 | 0 | 0 |
+
+The result is `completed_negative`, not promotion evidence. The selector still
+misses `internal/terraform/marks.go` at rank 379, so it fails the zero-miss
+128-file gate. A 64-file model plus deterministic graph reserve rescued that
+file but displaced three other required files. A shallow nonlinear ceiling
+regressed required-source Recall@128 to 58.82% and calibration Recall@5 to
+62.50%. Those mechanisms are rejected.
+
+The valid selector artifact SHA-256 is
+`e39aeef9a5e731a54aa1221df9b78c97b7d57bc3e57677b81cb0c7fb9f9b0a33`.
+The reviewed native-row SHA-256 is
+`04b3f702d585aea91bbbf7b3f70cb07dace3e1a3cad40b9a748f94ccb4cad9f0`.
+
+Per the stopping rule, further ranker-capacity tuning is frozen. The next
+semantic experiment requires broader reviewed hard negatives and general
+model-derived query/file interaction evidence; it must not add filename,
+path-token, task-term, repository-specific, or regex relevance bonuses. No
+holdout, paid-provider run, npm promotion, website claim, or public percentage
+is authorized from this diagnostic.
+
 ## Semantic-Union Review Refresh
 
 The frozen semantic candidate union changes which explicit negative files are

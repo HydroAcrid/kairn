@@ -1265,6 +1265,74 @@ describe("public evidence ranker training", () => {
     }
   });
 
+  it("fits deterministic monotonic Platt calibration on separable rows", () => {
+    const python = pythonInvocation();
+    const script = [
+      "import importlib.util, json, math, sys",
+      "spec = importlib.util.spec_from_file_location('trainer', sys.argv[1])",
+      "trainer = importlib.util.module_from_spec(spec)",
+      "spec.loader.exec_module(trainer)",
+      "trainer.FEATURES = ['signal']",
+      "rows = ([{'features': [-4.0], 'label': 0, 'labelWeight': 1.0} for _ in range(100)] +",
+      "        [{'features': [4.0], 'label': 1, 'labelWeight': 1.0} for _ in range(100)])",
+      "first = trainer.fit_platt(rows, 0.0, [1.0])",
+      "second = trainer.fit_platt(rows, 0.0, [1.0])",
+      "probabilities = trainer.calibrated_probabilities(rows, 0.0, [1.0], *first)",
+      "ece = trainer.expected_calibration_error([row['label'] for row in rows], probabilities)",
+      "print(json.dumps({'first': first, 'second': second, 'ece': ece}))"
+    ].join("\n");
+    const result = spawnSync(python.command, [
+      ...python.prefix,
+      "-c", script,
+      path.resolve("scripts/train-evidence-ranker.py")
+    ], { cwd: process.cwd(), encoding: "utf8" });
+
+    expect(result.status, result.stderr).toBe(0);
+    const output = JSON.parse(result.stdout) as {
+      first: [number, number];
+      second: [number, number];
+      ece: number;
+    };
+    expect(output.first).toEqual(output.second);
+    expect(output.first.every(Number.isFinite)).toBe(true);
+    expect(output.first[0]).toBeGreaterThan(0);
+    expect(output.ece).toBeLessThan(0.02);
+  });
+
+  it("evaluates learned selection over the full semantic probe", () => {
+    const python = pythonInvocation();
+    const script = [
+      "import importlib.util, json, sys",
+      "spec = importlib.util.spec_from_file_location('selector_eval', sys.argv[1])",
+      "selector_eval = importlib.util.module_from_spec(spec)",
+      "spec.loader.exec_module(selector_eval)",
+      "trainer = selector_eval.load_trainer()",
+      "base = {name: 0.0 for name in selector_eval.BASE_FEATURES}",
+      "noise = {'path': 'noise.ts', 'features': base}",
+      "required = {'path': 'required.ts', 'features': base}",
+      "case = {'id': 'case-a', 'language': 'typescript', 'scenario': 'source_localization', 'trainingCandidates': [noise]}",
+      "reports = {'case-a': {'requiredSourceExistingFiles': ['required.ts'], 'probeCandidates': [noise, required]}}",
+      "interactions = {'case-a': {'required.ts': {'fileSimilarity': 1.0}}}",
+      "coefficients = [0.0] * len(selector_eval.FEATURES)",
+      "coefficients[selector_eval.FEATURES.index('semanticFile')] = 1.0",
+      "result = selector_eval.evaluate_cases([case], reports, interactions, trainer, 0.0, coefficients, 'requiredSourceExistingFiles')",
+      "print(json.dumps(result))"
+    ].join("\n");
+    const result = spawnSync(python.command, [
+      ...python.prefix,
+      "-c", script,
+      path.resolve("scripts/evaluate-semantic-document-features.py")
+    ], { cwd: process.cwd(), encoding: "utf8" });
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      cases: 1,
+      requiredFiles: 1,
+      recallAt1: 1,
+      recallAt128: 1
+    });
+  });
+
   it("freezes train and calibration data before a detached holdout is opened", () => {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-ranker-detached-holdout-"));
     const input = path.join(temporary, "train-calibration.jsonl");

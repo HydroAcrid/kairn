@@ -205,18 +205,73 @@ def fit_platt(rows: list[dict[str, Any]], intercept: float, coefficients: list[f
     if not rows:
         return 1.0, 0.0
     scores = [raw_score(intercept, coefficients, row["features"]) for row in rows]
-    a, b = 1.0, 0.0
-    total_weight = max(1.0, sum(row["labelWeight"] for row in rows))
-    for iteration in range(1200):
+    positive_weight = sum(row["labelWeight"] for row in rows if row["label"] == 1)
+    negative_weight = sum(row["labelWeight"] for row in rows if row["label"] == 0)
+    if positive_weight <= 0 or negative_weight <= 0:
+        return 1.0, 0.0
+
+    # Platt's smoothed targets keep the optimum finite for separable calibration
+    # rows. The previous fixed-step gradient descent could stop with a severely
+    # underfit slope even when its mean probability matched the class prior.
+    positive_target = (positive_weight + 1.0) / (positive_weight + 2.0)
+    negative_target = 1.0 / (negative_weight + 2.0)
+    targets = [positive_target if row["label"] == 1 else negative_target for row in rows]
+
+    def objective(candidate_a: float, candidate_b: float) -> float:
+        total = 0.0
+        for row, score, target in zip(rows, scores, targets, strict=True):
+            logit = candidate_a * score + candidate_b
+            # Stable binary cross entropy for a soft target.
+            total += row["labelWeight"] * (
+                max(logit, 0.0) - logit * target + math.log1p(math.exp(-abs(logit)))
+            )
+        return total
+
+    a = 0.0
+    b = math.log((positive_weight + 1.0) / (negative_weight + 1.0))
+    loss = objective(a, b)
+    for _ in range(100):
         gradient_a = 0.0
         gradient_b = 0.0
-        for row, score in zip(rows, scores, strict=True):
-            error = (sigmoid(a * score + b) - row["label"]) * row["labelWeight"]
+        hessian_aa = 0.0
+        hessian_ab = 0.0
+        hessian_bb = 0.0
+        for row, score, target in zip(rows, scores, targets, strict=True):
+            probability = sigmoid(a * score + b)
+            error = (probability - target) * row["labelWeight"]
+            curvature = probability * (1.0 - probability) * row["labelWeight"]
             gradient_a += error * score
             gradient_b += error
-        rate = 0.15 / (1.0 + iteration / 250.0)
-        a -= rate * gradient_a / total_weight
-        b -= rate * gradient_b / total_weight
+            hessian_aa += curvature * score * score
+            hessian_ab += curvature * score
+            hessian_bb += curvature
+
+        # A tiny deterministic ridge protects the two-parameter solve from a
+        # singular Hessian without materially changing calibrated probabilities.
+        hessian_aa += 1e-12
+        hessian_bb += 1e-12
+        determinant = hessian_aa * hessian_bb - hessian_ab * hessian_ab
+        if determinant <= 1e-18:
+            break
+        delta_a = (hessian_bb * gradient_a - hessian_ab * gradient_b) / determinant
+        delta_b = (-hessian_ab * gradient_a + hessian_aa * gradient_b) / determinant
+        directional_derivative = gradient_a * delta_a + gradient_b * delta_b
+
+        step = 1.0
+        accepted = False
+        while step >= 1e-12:
+            candidate_a = a - step * delta_a
+            candidate_b = b - step * delta_b
+            # Calibration must remain monotonic so it cannot reverse rank order.
+            if candidate_a >= 0.0:
+                candidate_loss = objective(candidate_a, candidate_b)
+                if candidate_loss <= loss - 1e-4 * step * directional_derivative:
+                    a, b, loss = candidate_a, candidate_b, candidate_loss
+                    accepted = True
+                    break
+            step *= 0.5
+        if not accepted or max(abs(step * delta_a), abs(step * delta_b)) < 1e-10:
+            break
     return a, b
 
 
