@@ -75,7 +75,7 @@ const MAX_TEST_GRAPH_PROBE_PATHS = 192;
 const GRAPH_ENRICHMENT_CAPACITY =
   DEFAULT_ENRICHED_CANDIDATE_LIMIT - DEFAULT_INITIAL_CANDIDATE_LIMIT;
 const GRAPH_PRECISION_RESERVE = Math.floor(GRAPH_ENRICHMENT_CAPACITY * 3 / 8);
-const GRAPH_CORE_CAPACITY = Math.floor(GRAPH_ENRICHMENT_CAPACITY * 3 / 4);
+const GRAPH_CORE_CAPACITY = Math.floor(GRAPH_ENRICHMENT_CAPACITY * 7 / 8);
 const MAX_GRAPH_CONSENSUS_SUPPORT_SEEDS = 3;
 
 export function buildModelCandidateUnion(input: {
@@ -347,7 +347,7 @@ export function buildModelCandidateUnion(input: {
     limit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
   }).filter((filePath) => filesByPath.has(filePath));
   // Keep a bounded precision core so weighting consensus cannot displace
-  // direct parser relationships. Reserve the final quarter of enrichment for
+  // direct parser relationships. Reserve the final eighth of enrichment for
   // diverse consensus, importer, and fused graph evidence instead of letting
   // one broad graph order consume all 64 additions. This makes candidate
   // coverage stable under small model rank drift without enlarging the
