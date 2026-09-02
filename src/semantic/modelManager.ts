@@ -132,12 +132,19 @@ export async function installSemanticModel(input?: {
     modelPath: targetPath,
     verifyHashes: true
   });
-  if (existing.status === "ready") return existing;
+  // A document-schema or query-profile migration may keep the immutable ONNX
+  // and tokenizer files byte-identical while changing the pinned manifest
+  // identity. Refresh that compatible receipt before returning so sealed
+  // campaigns and embedding cache keys observe the current Kairn contract.
+  if (existing.status === "ready" && !semanticModelReceiptNeedsRefresh(existing, manifest)) {
+    return existing;
+  }
   const refreshed = refreshCompatibleInstalledModelReceipt({
     modelPath: targetPath,
     manifest
   });
   if (refreshed) return refreshed;
+  if (existing.status === "ready") return existing;
 
   fs.mkdirSync(modelsRoot, { recursive: true });
   const otherCacheBytes = Math.max(0, directorySize(modelsRoot) - directorySize(targetPath));
@@ -274,6 +281,14 @@ export function canRefreshSemanticModelReceipt(
     ...pinnedDocumentArtifact
   } = pinned;
   return JSON.stringify(installedDocumentArtifact) === JSON.stringify(pinnedDocumentArtifact);
+}
+
+export function semanticModelReceiptNeedsRefresh(
+  state: SemanticModelState,
+  pinnedManifest: SemanticModelManifest
+): boolean {
+  return state.status === "ready" &&
+    state.manifestSha256 !== semanticModelManifestSha256(pinnedManifest);
 }
 
 export function validateLocalModelPath(modelPath: string): string {

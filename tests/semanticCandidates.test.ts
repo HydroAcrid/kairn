@@ -28,7 +28,8 @@ import {
   getSemanticModelsRoot,
   hasSameSemanticModelArtifact,
   installSemanticModel,
-  semanticDocumentEmbeddingManifestSha256
+  semanticDocumentEmbeddingManifestSha256,
+  semanticModelReceiptNeedsRefresh
 } from "../src/semantic/modelManager.js";
 import {
   getSemanticModelManifest,
@@ -1963,6 +1964,20 @@ describe("model-based semantic candidates", () => {
       },
       current
     )).toBe(false);
+    expect(semanticModelReceiptNeedsRefresh({
+      modelId: current.modelId,
+      modelPath: "/model",
+      status: "ready",
+      totalBytes: 1,
+      manifestSha256: "0".repeat(64)
+    }, current)).toBe(true);
+    expect(semanticModelReceiptNeedsRefresh({
+      modelId: current.modelId,
+      modelPath: "/model",
+      status: "ready",
+      totalBytes: 1,
+      manifestSha256: createHash("sha256").update(JSON.stringify(current)).digest("hex")
+    }, current)).toBe(false);
   });
 
   it("enforces the 200MB cap across the complete user model cache", async () => {
