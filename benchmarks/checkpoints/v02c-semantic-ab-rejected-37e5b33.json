@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "benchmark-checkpoint.v1",
+  "checkpointId": "v02c-semantic-ab-rejected-37e5b33",
+  "recordedAt": "2026-09-01",
+  "branch": "codex/v0.2c-calibrated-ranker",
+  "sourceCommit": "37e5b331c19d98fe71f79c138cc968db927bf7f2",
+  "status": "completed_negative",
+  "decision": "reject_candidate_and_retain_frozen_semantic_generator",
+  "cohort": {
+    "id": "kairn-v02c-balanced-required-source-20260828",
+    "cases": 15,
+    "requiredFiles": 22,
+    "languages": 5,
+    "scenarios": 3,
+    "promotionEligible": false
+  },
+  "comparison": {
+    "baseline": {
+      "commit": "d2469ac57bd98f0c5babcdbbddef86433b8fcca5",
+      "candidateManifestSha256": "48df74475a1ee273874b7e113c4959b5290f0295448a021b809ecaeb8cf37cef",
+      "candidateReportSha256": "0ba730deecaaccab0c993b0b1f26cdd310c722f61529ca39a247a800399d7298",
+      "evaluationSha256": "92e8d29bb4e2e575a3631343d78211c71babe7bc4771db8850443c1f770c2b67"
+    },
+    "candidate": {
+      "commit": "37e5b331c19d98fe71f79c138cc968db927bf7f2",
+      "mechanismCommits": [
+        "6c7f2571900fb92b298ff12a841a50607d484dad",
+        "046a2bf22dda01426b84b3d12568cfc348debf87"
+      ],
+      "candidateManifestSha256": "3e289be3dae8edf7a1915754ea71628e926757301d3f5cbd87c1644191e3ab53",
+      "candidateReportSha256": "de4ffc5d784baadaa2983f64cbcd1f5e19933429317bd40aaadbde4a2e171ed3",
+      "evaluationSha256": "a5b8970ac61009afcdebd949c7d3c0df89b07ab554717a69cd34703053cb9286"
+    },
+    "candidatePool": {
+      "baselineRequiredFileRecallAt64": { "numerator": 22, "denominator": 22, "value": 1.0 },
+      "candidateRequiredFileRecallAt64": { "numerator": 22, "denominator": 22, "value": 1.0 },
+      "baselineRequiredFileRecallAt128": { "numerator": 22, "denominator": 22, "value": 1.0 },
+      "candidateRequiredFileRecallAt128": { "numerator": 22, "denominator": 22, "value": 1.0 }
+    },
+    "rankedMetrics": {
+      "requiredFileRecallAt1": {
+        "baseline": { "numerator": 7, "denominator": 22, "value": 0.3181818181818182 },
+        "candidate": { "numerator": 6, "denominator": 22, "value": 0.2727272727272727 },
+        "deltaPercentagePoints": -4.54545454545455
+      },
+      "requiredFileRecallAt5": {
+        "baseline": { "numerator": 16, "denominator": 22, "value": 0.7272727272727273 },
+        "candidate": { "numerator": 15, "denominator": 22, "value": 0.6818181818181818 },
+        "deltaPercentagePoints": -4.54545454545455,
+        "paired95CiPercentagePoints": [-15.384615384615385, 0]
+      },
+      "requiredFileRecallAt64": {
+        "baseline": { "numerator": 22, "denominator": 22, "value": 1.0 },
+        "candidate": { "numerator": 22, "denominator": 22, "value": 1.0 },
+        "deltaPercentagePoints": 0
+      },
+      "strictFullCaseRecallAt64": {
+        "baseline": { "numerator": 15, "denominator": 15, "value": 1.0 },
+        "candidate": { "numerator": 15, "denominator": 15, "value": 1.0 },
+        "deltaPercentagePoints": 0
+      },
+      "mrr": {
+        "baseline": 0.4831814765817635,
+        "candidate": 0.43777966558138975,
+        "delta": -0.04540181100037377,
+        "paired95Ci": [-0.13020833333333337, -0.0037215013535172314]
+      },
+      "medianRequiredFileRank": { "baseline": 2.5, "candidate": 3.5 },
+      "expectedCalibrationError": { "baseline": 0.031721474342649304, "candidate": 0.031721474342649304 },
+      "generatedVendorTopOneViolations": { "baseline": 0, "candidate": 0 }
+    },
+    "pairedBootstrap": {
+      "unit": "case",
+      "resamples": 10000,
+      "seed": 20260901
+    }
+  },
+  "validation": {
+    "benchmarkDoctor": "valid",
+    "tierA": { "valid": true, "durationMs": 14672 },
+    "tierB": { "valid": true, "durationMs": 7617, "languages": 5, "offline": true },
+    "cacheRetainedGiB": 7.4,
+    "cacheLimitGiB": 8,
+    "holdoutAccessed": false,
+    "paidProviderCalled": false
+  },
+  "limitations": [
+    "This is a development calibration cohort, not public or sealed-holdout evidence.",
+    "Materialization timing is not compared because repository-index and embedding-cache reuse differed between arms.",
+    "The previously detached holdout remains permanently ineligible."
+  ],
+  "nextStage": "Revert the two regressing retrieval experiments, retain the frozen e0c0dfb semantic generator, and continue with lineage-safe calibrated-ranker work on identical pools."
+}

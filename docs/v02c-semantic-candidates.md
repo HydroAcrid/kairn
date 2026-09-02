@@ -643,3 +643,34 @@ or regular-expression relevance rules. The old holdout remains tombstoned;
 public accuracy and token claims still require fresh sealed and live evidence.
 Exact hashes are recorded in
 `benchmarks/checkpoints/v02c-semantic-release-candidate-e0c0dfb.json`.
+
+## Post-freeze semantic A/B rejection
+
+One bounded post-freeze experiment tested independent behavioral query views
+and fairer interleaving of the model and graph lanes. The comparison reused the
+same balanced 15-case, five-language, three-scenario cohort and the same v185
+ranker. Both arms retained all 22 required files within 64 and 128, so the
+safety floor held. Ranking quality nevertheless regressed:
+
+| Metric | Frozen semantic baseline | Candidate | Delta |
+| --- | ---: | ---: | ---: |
+| Required-file Recall@1 | 31.82% (7/22) | 27.27% (6/22) | -4.55 pp |
+| Required-file Recall@5 | 72.73% (16/22) | 68.18% (15/22) | -4.55 pp |
+| Required-file Recall@64 | 100.00% (22/22) | 100.00% (22/22) | 0 pp |
+| Strict full case Recall@64 | 100.00% (15/15) | 100.00% (15/15) | 0 pp |
+| MRR | 0.4832 | 0.4378 | -0.0454 |
+| Median required-file rank | 2.5 | 3.5 | +1.0 (worse) |
+| ECE | 0.0317 | 0.0317 | 0 |
+
+The paired 95% interval for Recall@5 is -15.38 to 0 percentage points. The MRR
+interval is -0.1302 to -0.0037, establishing a negative ranking movement on
+this development cohort. Generated/vendor top-one violations remained zero.
+The candidate is rejected and its two mechanism commits are reverted with
+history preserved. This is not a public effectiveness result; it is the stop
+signal that keeps the frozen `e0c0dfb` generator.
+
+The diagnostic selector now also fails closed unless baseline evaluations use
+the exact complete semantic probe and matching manifest/report hashes. This
+prevents a model trained on a wider pool from being reported against an old
+128-file subset. The complete record is
+`benchmarks/checkpoints/v02c-semantic-ab-rejected-37e5b33.json`.
