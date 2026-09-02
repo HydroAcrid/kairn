@@ -674,3 +674,39 @@ the exact complete semantic probe and matching manifest/report hashes. This
 prevents a model trained on a wider pool from being reported against an old
 128-file subset. The complete record is
 `benchmarks/checkpoints/v02c-semantic-ab-rejected-37e5b33.json`.
+
+## Frozen-ranker refresh and stop decision
+
+The exact frozen semantic generator then rematerialized all 135 public
+train/calibration cases with a complete 512-file diagnostic probe. All ten
+reviewed required-source cases had every required file somewhere in that
+model-backed probe. The deterministic 128-file fusion retained nine of ten,
+which isolates the remaining failure to ordering rather than missing global
+semantic evidence.
+
+A preregistered pairwise logistic selector was fitted from the complete probe
+using the existing structural features plus separate whole-file and
+symbol-body embedding similarities. Against v166 on the same paths and feature
+vectors:
+
+| Metric | v166 | Refreshed candidate | Delta |
+| --- | ---: | ---: | ---: |
+| Calibration Recall@5 (45 cases / 72 files) | 75.00% | 76.39% | +1.39 pp |
+| Calibration MRR | 0.4567 | 0.4680 | +0.0112 |
+| Required-source Recall@64 (10 cases / 17 files) | 70.59% | 70.59% | 0.00 pp |
+| Required-source Recall@128 | 88.24% | 94.12% | +5.88 pp |
+| Required-source MRR | 0.1072 | 0.1488 | +0.0415 |
+| Calibration ECE | 0.0190 | 0.0139 | -0.0051 |
+
+The paired interval for required-source MRR is positive, but the primary
+Recall@64 metric does not move and the 99% serving gate still fails. The result
+is therefore `completed_negative`. It does not replace the frozen `e0c0dfb`
+semantic generator or the opt-in v185 ranker, and it does not support a public
+accuracy claim.
+
+This is the stopping point for offline semantic/ranker tuning on the current
+development cohorts. The next evidence step is the repaired live Codex A/B:
+both arms must pass verification and required-source gates before
+provider-observed token or quality differences count. Exact inputs, hashes,
+metrics, and limitations are recorded in
+`benchmarks/checkpoints/v02c-ranker-refresh-v186-23e924e.json`.

@@ -1,0 +1,147 @@
+{
+  "schemaVersion": "learned-reranker-checkpoint.v3",
+  "checkpointId": "v02c-ranker-refresh-v186-23e924e-20260902",
+  "recordedAt": "2026-09-02",
+  "branch": "codex/v0.2c-calibrated-ranker",
+  "sourceCommit": "23e924e8fbc87a4018993236e1b148be09a0afd4",
+  "classification": "completed_negative",
+  "decision": "retain_frozen_semantic_release_candidate_and_stop_offline_tuning",
+  "holdoutState": "contaminated_do_not_use",
+  "inputs": {
+    "manifest": {
+      "path": "artifacts/ranker-corpus.semantic-v186-frozen-v5-train-cal135.json",
+      "sha256": "1f84df37280d292c5c187fca9e85cb8e9212b78c3a8b901b47d3aa51b221e7d5",
+      "bytes": 26271631
+    },
+    "report": {
+      "path": "artifacts/ranker-corpus.semantic-v186-frozen-v5-train-cal135.report.json",
+      "sha256": "2ed86472d7f087e83162563486576b72030975bea864b97c663529ac694daec3",
+      "bytes": 127878642
+    },
+    "trainingRows": {
+      "path": "artifacts/ranker-probe.semantic-v186-frozen-v5-train-cal135.jsonl",
+      "sha256": "f838ed425428763d758cf3d54ac14c44028075b4ff185c77bac324d68cf2965d",
+      "bytes": 739753,
+      "labeledRows": 1068
+    },
+    "v166CalibrationEvaluation": {
+      "path": "artifacts/ranker-calibration.semantic-v186-frozen-v5-v166.json",
+      "sha256": "d4ed0840ec5ae91c7a19dee20127bb0d77bae8f79aa15e31aedfb5d03b3ba973"
+    },
+    "v166RequiredSourceEvaluation": {
+      "path": "artifacts/ranker-required-source.semantic-v186-frozen-v5-v166.json",
+      "sha256": "2435574c5a83c019d86c07631d9f42447c79bb48b7963cc18c73eadbf6ba2ea3"
+    },
+    "candidateEvaluation": {
+      "path": "artifacts/ranker-semantic-document-features-pairwise.v186-frozen-v5.json",
+      "sha256": "44d11fac65776252c436494b1d079920118fb67c1c557538fd1012d665461c78"
+    }
+  },
+  "materialization": {
+    "cases": 135,
+    "trainCases": 90,
+    "calibrationCases": 45,
+    "holdoutCases": 0,
+    "semanticModel": "jina-code-v2-q8",
+    "semanticRuntimeBackend": "node",
+    "allCasesSemanticReady": true,
+    "embeddingReuseRate": 0.5512,
+    "generatedEmbeddings": 250467,
+    "reusedEmbeddings": 307614,
+    "candidateProbeLimit": 512,
+    "requiredSourceProbeAvailability": {
+      "cases": 10,
+      "available": 10,
+      "value": 1.0
+    },
+    "deterministicBoundedPoolRecallAt128": {
+      "cases": 10,
+      "complete": 9,
+      "value": 0.9
+    }
+  },
+  "candidate": {
+    "modelKind": "pairwise_logistic",
+    "features": [
+      "frozen evidence-features-v4",
+      "whole-file semantic similarity",
+      "symbol-body semantic similarity",
+      "explicit document-kind missingness"
+    ],
+    "selectedL2": 0.0001,
+    "trainingPairs": 1107,
+    "calibration": "positive-slope Newton Platt fit with backtracking",
+    "promotionEligible": false
+  },
+  "results": {
+    "weakPatchCalibration": {
+      "cases": 45,
+      "requiredFiles": 72,
+      "v166": {
+        "recallAt5": 0.75,
+        "mrr": 0.4567390766066331,
+        "recallAt64": 0.9722222222222222
+      },
+      "candidate": {
+        "recallAt5": 0.7638888888888888,
+        "mrr": 0.4679740690842128,
+        "recallAt64": 0.9722222222222222,
+        "ece": 0.013860464299574956,
+        "generatedVendorTopOneViolations": 0
+      },
+      "paired95": {
+        "recallAt5Delta": [-0.0273972602739726, 0.07017543859649122],
+        "mrrDelta": [-0.02542302120621076, 0.053494581219684645],
+        "recallAt64Delta": [0.0, 0.0]
+      }
+    },
+    "requiredSourceDiagnostic": {
+      "cases": 10,
+      "requiredFiles": 17,
+      "v166": {
+        "recallAt5": 0.17647058823529413,
+        "mrr": 0.10721928396562616,
+        "recallAt64": 0.7058823529411765,
+        "recallAt128": 0.8823529411764706
+      },
+      "candidate": {
+        "recallAt5": 0.17647058823529413,
+        "mrr": 0.1487598660126021,
+        "recallAt64": 0.7058823529411765,
+        "recallAt128": 0.9411764705882353,
+        "strictFullRecallAt64": 0.6,
+        "strictFullRecallAt128": 0.9,
+        "generatedVendorTopOneViolations": 0
+      },
+      "paired95": {
+        "recallAt5Delta": [0.0, 0.0],
+        "mrrDelta": [0.00021109665763570373, 0.12795856817946671],
+        "recallAt64Delta": [0.0, 0.0]
+      }
+    }
+  },
+  "gateDecision": {
+    "allRequiredFilesAvailableInSemanticProbe": true,
+    "calibrationEcePassed": true,
+    "generatedVendorTopOnePassed": true,
+    "calibrationRecallAt5Noninferior": true,
+    "calibrationMrrNoninferior": true,
+    "requiredSourceMrrImprovedWithPositivePairedInterval": true,
+    "rankerServedRecallAt64Passed": false,
+    "noticeableRecallAt64Gain": false,
+    "promotionPassed": false,
+    "publicationEligible": false
+  },
+  "interpretation": {
+    "semanticRetrievalStatus": "The frozen local Jina retriever exposes every required source in the 512-file diagnostic probe. The remaining failure is ordering, not missing global semantic evidence.",
+    "rankerStatus": "The refreshed pairwise model improves required-source MRR and calibration metrics but leaves Recall@64 unchanged. It does not justify another serving model or public accuracy claim.",
+    "stoppingDiscipline": "The preregistered noticeable-gain condition was not met. No further offline retrieval, label, feature, or model experiment is authorized by this cohort.",
+    "nextStep": "Retain the e0c0dfb semantic generator and v185 opt-in ranker, then run the repaired live Codex A/B for quality-passing provider-observed token and verification evidence."
+  },
+  "limitations": [
+    "The 10-case required-source diagnostic is small, has no Python cases, and is not publication-grade evidence.",
+    "The balanced 15-cell development cohort remains the broader five-language safety check and already has 22/22 required files within served rank 64.",
+    "The detached holdout was previously contaminated and was not accessed; a fresh sealed lineage-disjoint holdout is required before public accuracy claims.",
+    "No paid provider or ReasonBlocks call was made."
+  ]
+}
