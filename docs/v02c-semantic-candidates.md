@@ -710,3 +710,53 @@ both arms must pass verification and required-source gates before
 provider-observed token or quality differences count. Exact inputs, hashes,
 metrics, and limitations are recorded in
 `benchmarks/checkpoints/v02c-ranker-refresh-v186-23e924e.json`.
+
+## Complete ecological Codex pilot
+
+The sealed semantic Codex pilot completed at commit `9cbda05` with 90 of 90
+attempts trace-valid and quality-passing. It covered 15 public tasks across
+Python, TypeScript, Go, Java, and C++, crossed with source localization,
+failure-first debugging, and persistent multi-turn work. Each task ran three
+times with vanilla Codex and Codex plus Kairn, producing 45 eligible pairs.
+
+Quality held across both arms: every attempt passed verification, required
+source access, source invariants, and diff scope. There were no invalid or
+harmful attempts.
+
+| Metric | Vanilla Codex | Codex + Kairn | Change |
+| --- | ---: | ---: | ---: |
+| Total observed model tokens | 21,876,901 | 22,012,193 | +0.62% (worse) |
+| Median paired token delta | — | -23,476 | 95% CI -36,847 to -3,014 |
+| Median paired token reduction | — | 3.49% | descriptive; token-delta CI above |
+| Pairs using fewer tokens with Kairn | — | 29/45 | 64.44% |
+| Extraneous files opened | 8,768 | 827 | -90.57% |
+| Explicit noise files opened | 793 | 34 | -95.71% |
+| Repeated unchanged-read events | 24,513 | 520 | -97.88% |
+| Verification and quality passes | 45/45 | 45/45 | no regression |
+
+This is a real positive paired result: the typical quality-passing run used
+fewer tokens with Kairn, and its median interval excludes zero. It is not yet
+an unqualified public token-saving result. Sixteen large regressions caused
+the aggregate total to finish 0.62% higher, and fresh-checkout Kairn setup
+averaged 53.9 seconds. Including cold setup, total end-to-end time was 38.89%
+worse; agent-run time alone was 5.49% worse in aggregate.
+
+The semantic layer clearly changed repository behavior in the intended
+direction: it preserved required-source quality while sharply reducing noisy
+exploration and repeated reads. The remaining problem is variance and
+low-value intervention, not proof that more filename or regular-expression
+matching is needed.
+
+The next and only authorized mechanism experiment is a general value guard:
+Kairn should abstain when evidence is unlikely to add enough value to justify
+perturbing an already-obvious or very small task. It may use general model
+confidence, incremental-value, evidence-cost, repository-size, and session
+signals. It may not use repository names, filenames, symbols, benchmark task
+phrases, or regular-expression relevance bonuses. The current 45 pairs are
+diagnostic only; any new effectiveness claim requires lineage-disjoint live
+tasks.
+
+This pilot does not promote calibrated ranking to the default, authorize a
+broad website token claim, or publish a ReasonBlocks comparison. Exact
+artifacts, hashes, gates, storage measurements, and limitations are recorded
+in `benchmarks/checkpoints/v02c-codex-pilot-9cbda05.json`.

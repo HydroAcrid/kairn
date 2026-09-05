@@ -1,0 +1,173 @@
+{
+  "schemaVersion": "codex-pilot-checkpoint.v1",
+  "checkpointId": "v02c-codex-pilot-9cbda05-20260905",
+  "recordedAt": "2026-09-05",
+  "branch": "codex/v0.2c-calibrated-ranker",
+  "sourceCommit": "9cbda059b8889d5340e5d5b7667b60fa7119ac5c",
+  "classification": "completed_positive",
+  "decision": "retain_semantic_candidate_but_block_broad_token_claim_pending_outlier_guard",
+  "publicationEligible": false,
+  "campaign": {
+    "id": "codex-v02c-semantic-pilot",
+    "profile": "pilot",
+    "stage": "complete",
+    "planSha256": "4c03e76328d64b168086eeb07bb9eea0dcd1c6b0e2344bc5d4866d17488165cb",
+    "seed": 20260722,
+    "attempts": 90,
+    "validAttempts": 90,
+    "qualityPassingAttempts": 90,
+    "qualityEligiblePairs": 45,
+    "protocolComplete": true,
+    "conditions": [
+      "vanilla_codex",
+      "codex_kairn"
+    ],
+    "languages": 5,
+    "scenarios": 3,
+    "repeats": 3
+  },
+  "runtime": {
+    "model": "gpt-5.6-sol",
+    "reasoningEffort": "medium",
+    "serviceTier": "standard",
+    "fastMode": false,
+    "codexVersion": "0.145.0",
+    "codexPackageIntegrity": "sha512-/PSPSFujjjmiyVFvG2yu/grOFhsWdokTH8t2KGWhXSo/M5n/dIDsnbsnO82/7bLtIoDuzQf7ATBUMWqPWQINlQ==",
+    "subscriptionAuthOnly": true
+  },
+  "kairn": {
+    "candidateMode": "semantic",
+    "semanticModelId": "jina-code-v2-q8",
+    "semanticModelManifestSha256": "d36c6ed084986e362004c43ddca67dabf5ef281617882eed9ee0e4b7dca999c0",
+    "rankerMode": "calibrated",
+    "rankerModelId": "kairn-semantic-rc-v185",
+    "rankerArtifactChecksum": "642aeadca7e66ef6d44de7b1f1c9a76fe881ff023461589995fd6b52f89f5bad",
+    "featureSchemaVersion": "evidence-features-v5"
+  },
+  "artifacts": {
+    "manifest": {
+      "path": "artifacts/codex-v02c-pilot-9cbda05/codex-pilot-manifest.json",
+      "bytes": 34222,
+      "sha256": "222870147077c5b0d3961d348b43c6a03db25a108f68815c1c819b480486a493"
+    },
+    "attempts": {
+      "path": "artifacts/codex-v02c-pilot-9cbda05/codex-pilot-attempts.jsonl",
+      "bytes": 9942618,
+      "sha256": "e5bb9f8d83b12796b828aa5039ecefd0ab988b51ed7d0c9112c8bef177dff6e5"
+    },
+    "report": {
+      "path": "artifacts/codex-v02c-pilot-9cbda05/codex-pilot-report.json",
+      "bytes": 15616887,
+      "sha256": "27ca15cf7b790b9b166c7b6e7d2f302ee6f71a7923dd5524cda3778aaf70099d"
+    },
+    "publicEvidence": {
+      "path": "artifacts/codex-v02c-pilot-9cbda05/public-codex-pilot-evidence.v1.json",
+      "bytes": 139320,
+      "sha256": "f248487eed0961544c591a9b772a8c4a1ff2e0dae983f44349d6d088884eda04"
+    }
+  },
+  "quality": {
+    "traceValid": "90/90",
+    "verificationPassed": "90/90",
+    "requiredSourcePathSeen": "90/90",
+    "requiredSourceContentAccessed": "90/90",
+    "requiredSourceAccessRecall": 1.0,
+    "sourceInvariantPassed": "90/90",
+    "diffScopePassed": "90/90",
+    "harmfulOrInvalidAttempts": 0
+  },
+  "tokens": {
+    "vanillaTotal": 21876901,
+    "kairnTotal": 22012193,
+    "aggregateSignedDelta": 135292,
+    "aggregateSignedDeltaPercent": 0.6184239714756674,
+    "pairsWithFewerKairnTokens": 29,
+    "pairsWithMoreKairnTokens": 16,
+    "medianSignedDelta": -23476,
+    "medianSignedDeltaCi95": {
+      "lower": -36847,
+      "upper": -3014,
+      "samples": 5000
+    },
+    "medianPairedReductionPercent": 3.4890150398112647,
+    "medianPairedReductionPercentIsDescriptive": true,
+    "kairnEvidencePayloadTokens": 27237,
+    "interpretation": "The typical quality-passing pair used fewer tokens with Kairn and the paired median interval excludes zero. A small number of large regressions made aggregate campaign tokens 0.62% worse, so the result does not support an unqualified total-token reduction claim."
+  },
+  "repositoryBehavior": {
+    "extraneousFilesOpened": {
+      "vanilla": 8768,
+      "kairn": 827,
+      "reductionPercent": 90.56797445255475
+    },
+    "explicitNoiseFilesOpened": {
+      "vanilla": 793,
+      "kairn": 34,
+      "reductionPercent": 95.7124842370744
+    },
+    "repeatedUnchangedReadEvents": {
+      "vanilla": 24513,
+      "kairn": 520,
+      "reductionPercent": 97.87867662056868
+    },
+    "timeToFirstRequiredContentMs": {
+      "vanillaAverage": 21102.51968858507,
+      "kairnAverage": 13143.174924045139,
+      "pairedMedianDelta": -3673.517822265625
+    }
+  },
+  "latency": {
+    "agentRunMs": {
+      "vanillaTotal": 7134621,
+      "kairnTotal": 7526256,
+      "aggregateSignedDelta": 391635,
+      "aggregateSignedDeltaPercent": 5.4892193993205805,
+      "pairedMedianDelta": 10148
+    },
+    "coldEndToEndMs": {
+      "vanillaTotal": 7215270,
+      "kairnTotal": 10021274,
+      "aggregateSignedDelta": 2806004,
+      "aggregateSignedDeltaPercent": 38.889798995740975
+    },
+    "kairnSetupMs": {
+      "total": 2423388,
+      "average": 53853.066666666666
+    },
+    "interpretation": "Fresh-checkout cold indexing materially worsened end-to-end time. Warm-session latency requires separate reporting and Kairn must not claim that this campaign made agents faster."
+  },
+  "storage": {
+    "repositoryWorkingSetGiB": 16.0,
+    "benchmarkCheckoutCacheGiB": 6.8,
+    "checkoutCacheLimitGiB": 8.0,
+    "campaignBundleGiB": 3.3,
+    "kairnStateMiB": 937,
+    "runawayRetentionObserved": false
+  },
+  "gateDecision": {
+    "protocolIntegrityPassed": true,
+    "qualityPassed": true,
+    "requiredSourcePassed": true,
+    "pairedMedianTokenImprovementPassed": true,
+    "aggregateTokenImprovementPassed": false,
+    "coldLatencyImprovementPassed": false,
+    "semanticCandidateRetained": true,
+    "calibratedDefaultPromotionPassed": false,
+    "broadPublicTokenClaimPassed": false,
+    "reasonBlocksComparisonAuthorizedByThisCheckpoint": false
+  },
+  "nextExperiment": {
+    "name": "general_value_guard_and_abstention",
+    "scope": "One preregistered mechanism experiment using general confidence, incremental-value, repository-size, session, and evidence-cost signals. No repository, filename, symbol, task phrase, or regular-expression relevance rule is permitted.",
+    "goal": "Preserve the 100% quality and required-source gates while preventing low-value evidence from perturbing simple or already-obvious tasks.",
+    "evaluation": "Use the current 45 pairs for mechanism diagnosis only. Any effectiveness claim must be confirmed on new lineage-disjoint live tasks."
+  },
+  "limitations": [
+    "This is a two-arm ecological Codex comparison, not the controlled four-arm ReasonBlocks experiment.",
+    "The campaign covers 15 tasks, five languages, three scenarios, and three repeats; repeated runs of the same task are correlated.",
+    "The aggregate token total regressed by 0.62% despite a positive paired median result.",
+    "Cold fresh-checkout indexing added an average of 53.9 seconds per Kairn attempt and must be separated from warm use.",
+    "The prior detached holdout is contaminated and was not used.",
+    "Raw repositories, workspaces, syscall traces, credentials, and transcripts remain local and unpublished."
+  ]
+}
